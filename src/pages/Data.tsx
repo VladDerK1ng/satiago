@@ -10,8 +10,8 @@ import { t } from '../i18n';
 import { blobToBase64 } from '../platform/camera';
 import { pickFile, saveExport } from '../platform/files';
 import { haptic } from '../platform/haptics';
-import { getAiKey, removeAiKey } from '../platform/secrets';
-import { DEFAULT_SETTINGS, useAnalysis, useFoods, useStore, type DataCategory, type State } from '../store';
+import { removeAiKey } from '../platform/secrets';
+import { useAnalysis, useFoods, useStore, type DataCategory, type State } from '../store';
 import { toast } from '../ui/snackbar';
 import '../styles/settings.css';
 
@@ -251,12 +251,9 @@ export default function DataPage() {
     if (!pending) return;
     const clean: Partial<State> = {};
     for (const k of BACKUP_KEYS) if (k in pending) (clean as Record<string, unknown>)[k] = pending[k];
-    // The key never travels with a backup, so AI Assist stays off until a key is added here.
-    if (clean.settings) {
-      // Keys never travel in backups: keep AI Assist on only if this device has a key for the backup's provider.
-      const ai = { ...DEFAULT_SETTINGS.ai, ...clean.settings.ai };
-      if (!(await getAiKey(ai.provider))) clean.settings = { ...clean.settings, ai: { ...ai, enabled: false } };
-    }
+    // AI settings belong to this device, like its keys: a backup never changes the provider, model or
+    // base URL. Otherwise a crafted backup could point a key saved here at someone else's server.
+    if (clean.settings) clean.settings = { ...clean.settings, ai: st.settings.ai };
     st.importAll(clean);
     setPending(null);
     haptic('success');
