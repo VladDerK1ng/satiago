@@ -84,6 +84,7 @@ async function runHealthSync(): Promise<{ ok: boolean; message: string }> {
   }
 
   const parts = [plan.imported + written === 0 ? t('settings.health.upToDate') : t('settings.health.result', { imported: plan.imported, written })];
+  if (plan.unusual.length) parts.push(t('settings.health.unusual', { count: plan.unusual.length, weight: plan.unusual[0].weight, date: plan.unusual[0].date }));
   if (failed.length) parts.push(t('settings.health.partialRead', { types: failed.map((f) => t(`settings.health.type.${f}`)).join(', ') }));
   if (written < writes.length) parts.push(t('settings.health.writeFailed', { count: writes.length - written }));
   return { ok: failed.length === 0 && written === writes.length, message: parts.join(' ') };

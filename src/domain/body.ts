@@ -174,3 +174,27 @@ export function rankHistory(log: LogEntry[], sort: 'recent' | 'frequent'): strin
     .sort(([, a], [, b]) => (sort === 'frequent' ? b.count - a.count || b.last.localeCompare(a.last) : b.last.localeCompare(a.last)))
     .map(([id]) => id);
 }
+
+/**
+ * Weigh-ins that are far from the days around them (more than 7 % from the median of other
+ * weigh-ins within 10 days), such as a default or mistyped value. `context` adds weigh-ins already
+ * known (e.g. in the app) to judge against; only `incoming` values are reported. At least three
+ * nearby weigh-ins are needed before a value is called unusual.
+ */
+export function unusualWeights(incoming: BodyEntry[], context: BodyEntry[] = []): { date: string; weight: number; typical: number }[] {
+  const all = [...context, ...incoming].filter((b) => (b.weight ?? 0) > 0);
+  const out: { date: string; weight: number; typical: number }[] = [];
+  for (const b of incoming) {
+    if (!b.weight || b.weight <= 0) continue;
+    const d = dayIndex(b.date);
+    const near = all
+      .filter((x) => x !== b && x.date !== b.date && Math.abs(dayIndex(x.date) - d) <= 10)
+      .map((x) => x.weight!)
+      .sort((a, c) => a - c);
+    if (near.length < 3) continue;
+    const mid = near.length >> 1;
+    const median = near.length % 2 ? near[mid] : (near[mid - 1] + near[mid]) / 2;
+    if (Math.abs(b.weight - median) / median > 0.07) out.push({ date: b.date, weight: b.weight, typical: Math.round(median * 10) / 10 });
+  }
+  return out;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bodyRatios, cycleInfo, energyBalance, fromCm, habitCalendar, habitStats, latestMeasurements, periodRanges, rankHistory, timeLabel, toCm } from './body';
+import { bodyRatios, cycleInfo, unusualWeights, energyBalance, fromCm, habitCalendar, habitStats, latestMeasurements, periodRanges, rankHistory, timeLabel, toCm } from './body';
 import type { LogEntry } from './types';
 
 const entry = (date: string, kcal: number, foodId?: string, minute = 600): LogEntry => ({ id: date + kcal + (foodId ?? ''), date, minute, name: 'x', icon: '', foodId, n: { kcal } });
@@ -79,5 +79,22 @@ describe('habitStats', () => {
     expect(habitStats(days('xxxxx.'), 'food')).toMatchObject({ current: 5, best: 5 });
     expect(habitStats(days('xxx..x'), 'food')).toMatchObject({ current: 1, best: 3 });
     expect(habitStats(days('......'), 'food')).toMatchObject({ current: 0, best: 0, done: 0 });
+  });
+});
+
+describe('unusualWeights', () => {
+  const day = (d: number) => `2026-10-${String(d).padStart(2, '0')}`;
+  const series = [10, 11, 12, 13, 14, 15, 16, 17, 18].map((d, i) => ({ date: day(d), weight: 70 - i * 0.15 }));
+  it('flags a weigh-in far from the days around it', () => {
+    const r = unusualWeights([...series, { date: day(19), weight: 80 }]);
+    expect(r).toEqual([{ date: day(19), weight: 80, typical: expect.closeTo(69, 0) }]);
+  });
+  it('uses existing data as context and leaves normal days alone', () => {
+    expect(unusualWeights(series)).toEqual([]);
+    expect(unusualWeights([{ date: day(19), weight: 80 }], series)).toHaveLength(1);
+    expect(unusualWeights([{ date: day(19), weight: 69.2 }], series)).toEqual([]);
+  });
+  it('needs enough nearby weigh-ins before judging', () => {
+    expect(unusualWeights([{ date: day(1), weight: 60 }, { date: day(2), weight: 80 }])).toEqual([]);
   });
 });

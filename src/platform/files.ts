@@ -28,6 +28,18 @@ export async function saveExport(name: string, data: string | Blob, mime = 'appl
 }
 
 /** Let the user choose a file to import (works on web and in the Android WebView). */
+/** Lets the user choose one or more files; resolves to an empty list when cancelled. */
+export function pickFiles(accept: string): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.multiple = true;
+    input.onchange = () => resolve([...(input.files ?? [])]);
+    input.click();
+  });
+}
+
 export function pickFile(accept: string): Promise<File | undefined> {
   return new Promise((resolve) => {
     const input = document.createElement('input');

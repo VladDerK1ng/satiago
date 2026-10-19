@@ -122,11 +122,12 @@ export const en = {
 
   'data.extButton': 'Import from MacroFactor or another app',
   'data.extDesc':
-    "Choose MacroFactor's Excel export (More → Data export) or a CSV from another app. Satiago reads nutrition, weight, body fat, steps, measurements, fasting and partial days, custom foods, recipes, your profile and goals. Expenditure and trend are recalculated from your data.",
+    'Choose MacroFactor’s data export (.xlsx) and, for every individual food, its food log export (.csv). You can select both files together. CSV files from other apps work too. Satiago reads nutrition, weight, body fat, steps, measurements, fasting and partial days, custom foods, recipes, your profile and goals, and continues your expenditure.',
   'data.extReading': 'Reading file…',
   'data.extTitle': 'Import data',
   'data.extMacroFactor': '{file} is a MacroFactor export. It contains:',
   'data.extFile': '{file} contains:',
+  'data.extFiles': 'Together, {files} contain:',
   'data.ext.dailyTotals': '{count} days of nutrition (calories, macros and micronutrients)',
   'data.ext.dailyTotals#one': '{count} day of nutrition (calories, macros and micronutrients)',
   'data.ext.foodEntries': '{count} food entries',
@@ -149,6 +150,11 @@ export const en = {
   'data.ext.foods#one': '{count} custom food or favorite',
   'data.ext.recipes': '{count} recipes',
   'data.ext.recipes#one': '{count} recipe',
+  'data.extNeedsFoodLog':
+    'This file has daily totals, not the individual foods you ate. To bring every food over, also choose MacroFactor’s food log export (a .csv file). You can select both files together. Without it, each day shows as one “MacroFactor daily total”.',
+  'data.extUnusual': 'Skip {count} unusual weigh-ins',
+  'data.extUnusual#one': 'Skip 1 unusual weigh-in',
+  'data.extUnusualItem': '{weight} {unit} on {date} (others around {typical})',
   'data.extTotalsNote': "MacroFactor's export has daily totals, not individual foods, so each day shows as one \"MacroFactor daily total\" entry. Tap it to see or edit the numbers.",
   'data.extProfile': 'Update my profile',
   'data.extProfileDesc': 'Sex, birth year, height, activity level and projection style.',

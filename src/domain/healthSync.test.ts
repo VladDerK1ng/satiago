@@ -158,3 +158,12 @@ describe('sampleTime', () => {
     expect(sampleTime('2026-10-19', now)).toEqual(now);
   });
 });
+
+describe('planHealthImport sanity check', () => {
+  it('does not import a weight far from the days around it', () => {
+    const body = Array.from({ length: 8 }, (_, i) => ({ date: `2026-10-${String(10 + i).padStart(2, '0')}`, weight: 69 - i * 0.1 }));
+    const plan = planHealthImport(body, { weight: [{ date: '2026-10-19', value: 80 }, { date: '2026-10-18', value: 68.3 }] }, 'kg');
+    expect(plan.patches).toEqual([{ date: '2026-10-18', weight: 68.3 }]);
+    expect(plan.unusual).toEqual([{ date: '2026-10-19', weight: 80, typical: expect.any(Number) }]);
+  });
+});

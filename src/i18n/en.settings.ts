@@ -83,6 +83,8 @@ export const enSettings = {
   'settings.health.upToDate': 'Health Connect is already up to date',
   'settings.health.readFailed': "Couldn't read from Health Connect: {reason}",
   'settings.health.partialRead': 'Some data types could not be read ({types}).',
+  'settings.health.unusual': 'Skipped {count} weights that looked wrong (e.g. {weight} on {date}). Delete them in the Health Connect app if they are mistakes.',
+  'settings.health.unusual#one': 'Skipped a weight that looked wrong ({weight} on {date}). If it is a mistake, delete it in the Health Connect app.',
   'settings.health.writeFailed': "{count} values couldn't be written.",
   'settings.health.writeFailed#one': "{count} value couldn't be written.",
   'settings.health.type.weight': 'weight',

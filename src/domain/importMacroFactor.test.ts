@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { importMacroFactor, isMacroFactorWorkbook } from './importMacroFactor';
+import { fromGeneric, importMacroFactor, isMacroFactorWorkbook, mergeImports } from './importMacroFactor';
+import { importSheets } from './importMf';
 import type { SheetRows } from './importMf';
 
 /** Sheets laid out like MacroFactor's Excel export (headers copied from a real export, values invented). */
@@ -231,5 +232,18 @@ describe('foods in both Custom Foods and Favorites', () => {
     );
     expect(r.foods).toHaveLength(1);
     expect(r.favorites).toEqual([r.foods[0].id]);
+  });
+});
+
+describe('mergeImports', () => {
+  it('combines several files into one import', () => {
+    const a = importMacroFactor(workbook, 'kg');
+    const b = fromGeneric(importSheets([{ name: 'MacroFactor-1.csv', rows: [['Date', 'Time', 'Food Name', 'Serving Size', 'Serving Qty', 'Serving Weight (g)', 'Calories (kcal)'], ['2026-01-18', '08:00', 'Oats', 'g', 60, 1, 230]] }], 'kg', 'MacroFactor'));
+    const m = mergeImports([a, b]);
+    expect(m.log.length).toBe(a.log.length + 1);
+    expect(m.summary.foodEntries).toBe(1);
+    expect(m.summary.dailyTotals).toBe(a.summary.dailyTotals);
+    expect(m.goals).toEqual(a.goals);
+    expect(m.body.length).toBe(a.body.length);
   });
 });

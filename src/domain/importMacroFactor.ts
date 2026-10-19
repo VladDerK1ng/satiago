@@ -1,4 +1,4 @@
-import { nutrientColumn, nutrientField, num, parseDate, parseHeader, toUnit, weightTo, type Cell, type ImportResult, type SheetRows } from './importMf';
+import { mergeBody, nutrientColumn, nutrientField, num, parseDate, parseHeader, toUnit, weightTo, type Cell, type ImportResult, type SheetRows } from './importMf';
 import { MEASUREMENT_KEYS, type ActivityLevel, type BodyEntry, type DayMeta, type Food, type Goal, type GoalType, type LogEntry, type MacroTarget, type MeasurementKey, type NutrientKey, type Nutrients, type Profile, type Settings, type TargetSnapshot, type WeightUnit } from './types';
 
 /**
@@ -535,4 +535,30 @@ export function importMacroFactor(sheets: SheetRows[], weightUnit: WeightUnit, o
     },
     warnings,
   };
+}
+
+/** Several import files (e.g. MacroFactor's full export plus its food-log CSV) as one import. */
+export function mergeImports(list: ExternalImport[]): ExternalImport {
+  const [first, ...rest] = list;
+  const out: ExternalImport = { ...first, log: [...first.log], body: [...first.body], meta: [...first.meta], foods: [...first.foods], favorites: [...first.favorites], goals: [...first.goals], snapshots: [...first.snapshots], expenditure: [...(first.expenditure ?? [])], summary: { ...first.summary, ignored: [...first.summary.ignored] }, warnings: [...first.warnings] };
+  for (const r of rest) {
+    out.log.push(...r.log);
+    out.body = mergeBody(out.body, r.body);
+    out.meta.push(...r.meta);
+    out.foods.push(...r.foods);
+    out.favorites.push(...r.favorites);
+    out.goals.push(...r.goals);
+    out.snapshots.push(...r.snapshots);
+    out.expenditure!.push(...(r.expenditure ?? []));
+    out.activeGoalId ??= r.activeGoalId;
+    out.profile ??= r.profile;
+    out.settings ??= r.settings;
+    for (const k of Object.keys(out.summary) as (keyof ExternalImport['summary'])[]) {
+      if (k === 'ignored') out.summary.ignored.push(...r.summary.ignored);
+      else if (k !== 'days') out.summary[k] += r.summary[k];
+    }
+    out.warnings.push(...r.warnings);
+  }
+  out.summary.days = new Set([...out.log.map((e) => e.date), ...out.body.map((b) => b.date)]).size;
+  return out;
 }

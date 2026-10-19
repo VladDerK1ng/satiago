@@ -1,5 +1,6 @@
 import { fromKg, toKg } from './coach';
 import { dayTotals } from './nutrition';
+import { unusualWeights } from './body';
 import type { BodyEntry, DayMeta, LogEntry, WeightUnit } from './types';
 import { isoDate } from './util';
 
@@ -30,6 +31,8 @@ export interface ImportPlan {
   patches: BodyEntry[];
   imported: number;
   skipped: number;
+  /** Weights left out because they were far from the days around them. */
+  unusual: { date: string; weight: number; typical: number }[];
 }
 
 export interface HealthWrite {
@@ -107,7 +110,18 @@ export function planHealthImport(body: BodyEntry[], samples: HealthSamples, unit
       imported++;
     }
   }
-  return { patches: [...patches.values()].sort((a, b) => a.date.localeCompare(b.date)), imported, skipped };
+  // A weight far from the days around it (a default or mistyped value written by some app) is not
+  // pulled in; it would otherwise drag the trend and expenditure.
+  const unusual = unusualWeights([...patches.values()], body);
+  for (const u of unusual) {
+    const p = patches.get(u.date)!;
+    const rest: BodyEntry = { ...p, weight: undefined };
+    imported--;
+    skipped++;
+    if (Object.entries(rest).some(([k, v]) => k !== 'date' && v !== undefined)) patches.set(u.date, JSON.parse(JSON.stringify(rest)));
+    else patches.delete(u.date);
+  }
+  return { patches: [...patches.values()].sort((a, b) => a.date.localeCompare(b.date)), imported, skipped, unusual };
 }
 
 export interface ExportInput {

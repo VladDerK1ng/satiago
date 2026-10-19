@@ -3,12 +3,13 @@ import { clear as idbClear, del as idbDel, get as idbGet, set as idbSet } from '
 import { useNavigate } from 'react-router-dom';
 import { Page, SettingRow, Sheet, Switch } from '../components/ui';
 import { MEASUREMENT_KEYS, NUTRIENT_KEYS, type ProgressPhoto } from '../domain/types';
-import { fromGeneric, importMacroFactor, isMacroFactorWorkbook, type ExternalImport } from '../domain/importMacroFactor';
+import { unusualWeights } from '../domain/body';
+import { fromGeneric, importMacroFactor, isMacroFactorWorkbook, mergeImports, type ExternalImport } from '../domain/importMacroFactor';
 import { importSheets, parseCsv, type Cell, type SheetRows } from '../domain/importMf';
 import { isoDate } from '../domain/util';
 import { t } from '../i18n';
 import { blobToBase64 } from '../platform/camera';
-import { pickFile, saveExport } from '../platform/files';
+import { pickFile, pickFiles, saveExport } from '../platform/files';
 import { haptic } from '../platform/haptics';
 import { removeAiKey } from '../platform/secrets';
 import { useAnalysis, useFoods, useStore, type DataCategory, type State } from '../store';
@@ -67,7 +68,10 @@ export default function DataPage() {
   const [pending, setPending] = useState<Backup | null>(null);
   const [wipeStep, setWipeStep] = useState<0 | 1 | 2>(0);
   const [typed, setTyped] = useState('');
-  const [external, setExternal] = useState<(ExternalImport & { file: string; macroFactor: boolean }) | null>(null);
+  const [external, setExternal] = useState<
+    (ExternalImport & { file: string; macroFactor: boolean; unusual: { date: string; weight: number; typical: number }[]; needsFoodLog: boolean }) | null
+  >(null);
+  const [skipUnusual, setSkipUnusual] = useState(true);
   const [withProfile, setWithProfile] = useState(true);
   const [withGoals, setWithGoals] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -212,22 +216,27 @@ export default function DataPage() {
   };
 
   /** MacroFactor (or similar) spreadsheet exports: .xlsx or .csv. */
+  /** MacroFactor (or similar) spreadsheet exports, .xlsx or .csv; several files can be chosen together. */
   const importOtherApp = async () => {
-    const f = await pickFile('.xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    if (!f) return;
+    const files = await pickFiles('.xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    if (!files.length) return;
     await run('external', async () => {
-      let sheets: SheetRows[];
-      if (/\.csv$/i.test(f.name) || f.type === 'text/csv') {
-        sheets = [{ name: f.name, rows: parseCsv(await f.text()) }];
-      } else {
-        const { default: readXlsxFile } = await import('read-excel-file/browser');
-        // The library types Date cells as `typeof Date`; at runtime they are Date instances.
-        sheets = (await readXlsxFile(f)).map((sh) => ({ name: sh.sheet, rows: sh.data as unknown as Cell[][] }));
+      const parsed: { name: string; sheets: SheetRows[] }[] = [];
+      for (const f of files) {
+        if (/\.csv$/i.test(f.name) || f.type === 'text/csv') {
+          parsed.push({ name: f.name, sheets: [{ name: f.name, rows: parseCsv(await f.text()) }] });
+        } else {
+          const { default: readXlsxFile } = await import('read-excel-file/browser');
+          // The library types Date cells as `typeof Date`; at runtime they are Date instances.
+          parsed.push({ name: f.name, sheets: (await readXlsxFile(f)).map((sh) => ({ name: sh.sheet, rows: sh.data as unknown as Cell[][] })) });
+        }
       }
-      const macroFactor = isMacroFactorWorkbook(sheets);
-      // Days that already have itemized foods (logged here or imported from a food log) keep them instead of a daily total.
-      const own = new Set(st.log.filter((e) => !e.id.includes('-total-')).map((e) => e.date));
-      const r = macroFactor ? importMacroFactor(sheets, st.settings.weightUnit, { skipTotalsOn: own }) : fromGeneric(importSheets(sheets, st.settings.weightUnit, /macrofactor/i.test(f.name) ? 'MacroFactor' : 'Imported'));
+      const unit = st.settings.weightUnit;
+      const generic = parsed.filter((p) => !isMacroFactorWorkbook(p.sheets)).map((p) => fromGeneric(importSheets(p.sheets, unit, /macrofactor/i.test(p.name) ? 'MacroFactor' : 'Imported')));
+      // Days with itemized foods (already logged here, or in a food log chosen now) keep them instead of a daily total.
+      const own = new Set([...st.log, ...generic.flatMap((g) => g.log)].filter((e) => !e.id.includes('-total-')).map((e) => e.date));
+      const full = parsed.filter((p) => isMacroFactorWorkbook(p.sheets)).map((p) => importMacroFactor(p.sheets, unit, { skipTotalsOn: own }));
+      const r = mergeImports([...full, ...generic]);
       if (!r.log.length && !r.body.length && !r.foods.length) {
         haptic('warning');
         toast(r.warnings[0] ?? t('data.extNothing'));
@@ -235,13 +244,23 @@ export default function DataPage() {
       }
       setWithProfile(true);
       setWithGoals(true);
-      setExternal({ ...r, file: f.name, macroFactor });
+      setSkipUnusual(true);
+      setExternal({
+        ...r,
+        file: files.map((f) => f.name).join(', '),
+        macroFactor: full.length > 0,
+        // Judge imported weigh-ins against each other and against what this device already has.
+        unusual: unusualWeights(r.body, st.body),
+        needsFoodLog: full.length > 0 && r.summary.foodEntries === 0 && !st.log.some((e) => !e.id.includes('-total-')),
+      });
     });
   };
 
   const applyExternal = () => {
     if (!external) return;
-    st.importExternal(external, { profile: withProfile && !!external.profile, goals: withGoals && external.goals.length > 0 });
+    const skip = skipUnusual ? new Set(external.unusual.map((u) => u.date)) : new Set<string>();
+    const body = external.body.map((b) => (skip.has(b.date) ? { ...b, weight: undefined } : b)).filter((b) => Object.entries(b).some(([k, v]) => k !== 'date' && v !== undefined));
+    st.importExternal({ ...external, body }, { profile: withProfile && !!external.profile, goals: withGoals && external.goals.length > 0 });
     setExternal(null);
     haptic('success');
     toast(t('data.extDone', { days: external.summary.days }));
@@ -359,7 +378,13 @@ export default function DataPage() {
       <Sheet open={!!external} onClose={() => setExternal(null)} title={t('data.extTitle')}>
         {external && (
           <div className="fw-screen fw-sheet-body">
-            <p className="fw-body-text">{external.macroFactor ? t('data.extMacroFactor', { file: external.file }) : t('data.extFile', { file: external.file })}</p>
+            <p className="fw-body-text">
+              {external.file.includes(', ')
+                ? t('data.extFiles', { files: external.file })
+                : external.macroFactor
+                  ? t('data.extMacroFactor', { file: external.file })
+                  : t('data.extFile', { file: external.file })}
+            </p>
             <ul className="fw-import-list num">
               {(
                 [
@@ -381,7 +406,24 @@ export default function DataPage() {
                   <li key={k}>{t(key, { count: external.summary[k] })}</li>
                 ))}
             </ul>
-            {external.summary.dailyTotals > 0 && external.macroFactor && <p className="fw-note">{t('data.extTotalsNote')}</p>}
+            {external.needsFoodLog ? (
+              <p className="fw-note fw-import-hint">{t('data.extNeedsFoodLog')}</p>
+            ) : (
+              external.summary.dailyTotals > 0 && external.macroFactor && <p className="fw-note">{t('data.extTotalsNote')}</p>
+            )}
+            {external.unusual.length > 0 && (
+              <div className="card list tight">
+                <SettingRow
+                  title={t('data.extUnusual', { count: external.unusual.length })}
+                  desc={external.unusual
+                    .slice(0, 3)
+                    .map((u) => t('data.extUnusualItem', { weight: u.weight, unit: st.settings.weightUnit, date: new Date(u.date + 'T00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), typical: u.typical }))
+                    .join(' · ')}
+                >
+                  <Switch checked={skipUnusual} onChange={setSkipUnusual} label={t('data.extUnusual', { count: external.unusual.length })} />
+                </SettingRow>
+              </div>
+            )}
             {(external.profile || external.goals.length > 0) && (
               <div className="card list tight">
                 {external.profile && (
