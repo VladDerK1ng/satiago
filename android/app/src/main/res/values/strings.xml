@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Satiago</string>
+    <string name="title_activity_main">Satiago</string>
+    <string name="package_name">io.github.vladderk1ng.satiago</string>
+    <string name="custom_url_scheme">satiago</string>
+    <string name="shortcut_log">Log food</string>
+    <string name="shortcut_scan">Scan barcode</string>
+    <string name="shortcut_weigh">Weigh in</string>
+</resources>

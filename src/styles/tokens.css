@@ -1,0 +1,103 @@
+/* Design tokens from docs/planning/ux-designs/ux-satiago-2026-10-19/DESIGN.md (AD-11).
+   Components use these variables only. Legacy short names at the bottom alias them. */
+@import '@fontsource-variable/manrope';
+
+:root {
+  --color-bg: #0b0d0c;
+  --color-surface: #141716;
+  --color-surface-raised: #1b1f1d;
+  --color-surface-sunken: #0f1211;
+  --color-border: #262b29;
+  --color-text: #eef2ef;
+  --color-text-muted: #8e9893;
+  --color-text-faint: #5e6763;
+  --color-accent: #2bb673;
+  --color-accent-strong: #3fd089;
+  --color-accent-ink: #04140b;
+  --color-accent-soft: #14301f;
+  --color-protein: #f07a63;
+  --color-fat: #f2b544;
+  --color-carbs: #5aa2f2;
+  --color-expenditure: #a38bf5;
+  --color-positive: #3fd089;
+  --color-caution: #f2b544;
+  --color-danger: #f2606a;
+  --shadow-float: 0 12px 40px rgba(0, 0, 0, 0.35);
+  --scrim: rgba(0, 0, 0, 0.55);
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --font: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --type-display: 700 34px/1.1 var(--font);
+  --type-title: 700 22px/1.2 var(--font);
+  --type-headline: 650 17px/1.3 var(--font);
+  --type-body: 500 15px/1.45 var(--font);
+  --type-caption: 550 12.5px/1.35 var(--font);
+  --type-overline: 700 11px/1.2 var(--font);
+  --type-numeral-xl: 750 40px/1 var(--font);
+  --type-numeral: 700 20px/1.1 var(--font);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --color-bg: #f5f6f4;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #eceeeb;
+  --color-border: #e0e4e1;
+  --color-text: #121614;
+  --color-text-muted: #5d6762;
+  --color-text-faint: #8c9590;
+  --color-accent: #178a52;
+  --color-accent-strong: #11713f;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #e1f3e8;
+  --color-protein: #d9573f;
+  --color-fat: #c98a12;
+  --color-carbs: #2e7fd6;
+  --color-expenditure: #7a5fe0;
+  --color-positive: #178a52;
+  --color-caution: #b47a0c;
+  --color-danger: #d23a45;
+  --shadow-float: 0 12px 32px rgba(18, 22, 20, 0.12);
+  --scrim: rgba(10, 14, 12, 0.35);
+  color-scheme: light;
+}
+
+/* Legacy aliases used by earlier screens. */
+:root,
+:root[data-theme='light'] {
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --surface-2: var(--color-surface-raised);
+  --border: var(--color-border);
+  --text: var(--color-text);
+  --muted: var(--color-text-muted);
+  --accent: var(--color-accent);
+  --accent-ink: var(--color-accent-ink);
+  --good: var(--color-positive);
+  --warn: var(--color-caution);
+  --bad: var(--color-danger);
+  --radius: var(--radius-lg);
+  --shadow: var(--shadow-float);
+}
+:root[data-theme='light'] {
+  --surface-2: var(--color-surface-sunken);
+}

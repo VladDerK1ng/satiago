@@ -1,0 +1,49 @@
+Satiago: open-source adaptive nutrition coach
+Copyright (C) 2026 Satiago contributors
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version. See LICENSE.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+Additional permission under GNU GPL version 3 section 7
+------------------------------------------------------
+If you modify this Program, or any covered work, by linking or combining it with Google ML Kit
+libraries (com.google.mlkit:*), Google on-device ML libraries (com.google.android.odml:*) or Google
+Play services libraries (com.google.android.gms:*), or modified versions of those libraries, and
+their dependencies, containing parts covered by the terms of their respective licenses, the
+licensors of this Program grant you additional permission to convey the resulting work.
+Corresponding Source for a non-source form of such a combination shall not include the source code
+for the parts of those libraries used as well as that of the covered work.
+
+Third-party data and assets
+---------------------------
+- Food data looked up online comes from Open Food Facts (https://world.openfoodfacts.org) and is
+  available under the Open Database License (ODbL) 1.0; individual contents under the Database
+  Contents License. Foods saved from Open Food Facts keep that attribution in the app.
+- Built-in generic food values are derived from USDA FoodData Central (https://fdc.nal.usda.gov),
+  which is in the public domain (CC0 1.0).
+- Manrope typeface, Copyright 2019 The Manrope Project Authors, SIL Open Font License 1.1
+  (full text in LICENSES/OFL-1.1.txt).
+- Barcode decoding in the web version uses zxing-wasm and barcode-detector (MIT).
+- License texts of the bundled JavaScript libraries are listed in public/third-party-licenses.txt,
+  which ships with the app.
+- All illustrations, icons and animations in this repository are original to Satiago.
+
+Privacy note on Google ML Kit
+-----------------------------
+The Android app scans barcodes with Google ML Kit, on the device. ML Kit logs usage diagnostics
+through Google's Data Transport library; the app's manifest removes the registration of its upload
+backend (com.google.android.datatransport.cct.CctBackendFactory), so those diagnostics have nowhere
+to go and the app sends no ML Kit diagnostics to Google.
+
+Trademarks
+----------
+Satiago is an independent project. It is not affiliated with, endorsed by or connected to
+MacroFactor or Stronger By Science Technologies, and it does not use their code or assets.
+"MacroFactor" is a trademark of its owner and is mentioned only to describe compatibility with its
+data-export file format. All other trademarks belong to their owners.
+
+Estimates are not medical advice.

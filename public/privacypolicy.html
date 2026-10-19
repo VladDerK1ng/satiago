@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Satiago Privacy Policy</title>
+    <style>
+      :root {
+        --bg: #0b0d0c;
+        --surface: #141716;
+        --border: #262b29;
+        --text: #eef2ef;
+        --muted: #8e9893;
+        --accent: #3fd089;
+        color-scheme: dark;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f5f6f4;
+          --surface: #ffffff;
+          --border: #e0e4e1;
+          --text: #121614;
+          --muted: #5d6762;
+          --accent: #11713f;
+          color-scheme: light;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
+      body {
+        font: 500 15px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(32px + env(safe-area-inset-bottom, 0px));
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 26px;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        margin: 8px 0 4px;
+      }
+      h2 {
+        font-size: 17px;
+        line-height: 1.3;
+        margin: 28px 0 8px;
+      }
+      p,
+      li {
+        margin: 0 0 10px;
+      }
+      ul {
+        padding-left: 20px;
+        margin: 0 0 10px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 16px;
+        margin: 16px 0;
+      }
+      .card p:last-child {
+        margin-bottom: 0;
+      }
+      a {
+        color: var(--accent);
+        font-weight: 650;
+        text-underline-offset: 3px;
+      }
+      .back {
+        display: inline-flex;
+        align-items: center;
+        min-height: 48px;
+      }
+      code {
+        font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+        font-size: 0.92em;
+        overflow-wrap: anywhere;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0 0 10px;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 8px 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      th {
+        color: var(--muted);
+        font-weight: 650;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="./index.html#/more/about">&larr; Back to Satiago</a>
+      <h1>Satiago Privacy Policy</h1>
+      <p class="muted">Effective 19 October 2026</p>
+
+      <div class="card">
+        <p>
+          <strong>In short:</strong> Satiago has no accounts, analytics, advertising or trackers. Everything you enter stays on your device. The developers of Satiago do not
+          receive, collect, sell or share any of your data.
+        </p>
+      </div>
+
+      <h2>Who we are</h2>
+      <p>
+        Satiago is a free, open-source nutrition app released under the GNU General Public License, version 3. It runs as an Android app and as a web app. There is no Satiago
+        server: the app does not send anything to its developers.
+      </p>
+
+      <h2>Data stored on your device</h2>
+      <p>Satiago stores the following only on your device, in the app's private storage:</p>
+      <ul>
+        <li>Your profile (sex, birth year, height, activity level, optional body fat) and settings.</li>
+        <li>Your food log, water, day notes, custom foods, recipes and favorites.</li>
+        <li>Body data: scale weight, body fat, steps, tape measurements (waist, hips and others) and, if you turn on cycle tracking, the days you mark as period days. This is sensitive health information, and it stays on your device.</li>
+        <li>Progress photos you take or choose. They never leave the device unless you export them.</li>
+        <li>Your goals and weekly check-in results.</li>
+        <li>If you choose to add one, your AI provider API key (see AI Assist below).</li>
+      </ul>
+      <p>Uninstalling the app, or using <em>More &rsaquo; Data &rsaquo; Delete all data</em>, removes this data.</p>
+
+      <h2>Health Connect</h2>
+      <p>
+        On Android, you can choose to connect Satiago to Health Connect. This is off until you turn it on in <em>Settings &rsaquo; Health Connect</em> and grant permissions. When
+        connected, Satiago:
+      </p>
+      <ul>
+        <li><strong>Reads</strong> weight, body fat and steps, to show them in Body metrics and to calculate your weight trend and energy expenditure. Steps are shown for reference only.</li>
+        <li><strong>Writes</strong> the weigh-ins and body fat you log in Satiago and, if you allow it, each finished day's total food energy (calories) and water intake.</li>
+      </ul>
+      <p>
+        Data read from Health Connect is stored only on your device, is used only to provide these features to you, and is never transferred to the developers or to any third
+        party, never used for advertising, and never sold. Satiago's use of information received from Health Connect adheres to the Health Connect Permissions policy, including
+        the Limited Use requirements. Health Connect data is never sent over the internet by Satiago, including to the AI provider.
+      </p>
+      <p>You can turn sync off in Satiago at any time and revoke the permissions in the Health Connect app. Data that Satiago wrote to Health Connect can be deleted there.</p>
+
+      <h2>Camera and photos</h2>
+      <p>
+        The camera is used to scan barcodes and, when you ask for it, to take progress photos or meal and label photos for AI Assist. Barcode scanning runs on the device with a
+        bundled model; images are not uploaded for scanning. The Android app uses Google ML Kit for this. ML Kit's usage-diagnostics upload is disabled in
+        the app, so Satiago sends no ML Kit diagnostics to Google. The web version decodes barcodes in your browser with an open-source decoder that ships with the app.
+        Photos sent to an AI provider are re-encoded on the device first, which removes location and other EXIF metadata.
+      </p>
+
+      <h2>Notifications</h2>
+      <p>If you turn on reminders, Satiago schedules local notifications on your device. No push service or server is involved.</p>
+
+      <h2>Network connections</h2>
+      <p>Satiago works offline. It connects to the internet only in these cases, and only when you take the action:</p>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Host</th>
+            <th scope="col">When and what is sent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>world.openfoodfacts.org</code>, <code>search.openfoodfacts.org</code></td>
+            <td>When you search foods online or scan a barcode that is not saved yet. Your search text or the barcode number is sent to Open Food Facts.</td>
+          </tr>
+          <tr>
+            <td><code>vladderk1ng.github.io</code> (GitHub Pages)</td>
+            <td>
+              Web version only: your browser downloads the app's own files from GitHub Pages when you open or update it. Like any web host, GitHub may log your IP address and
+              browser details; see GitHub's privacy statement. None of your Satiago data is sent there. The Android app does not use this host.
+            </td>
+          </tr>
+          <tr>
+            <td>The one AI provider host you configure</td>
+            <td>
+              Only if you add your own API key for that provider, and only when you use an AI feature (or test the key or load its model list in Settings). The meal
+              description, photo, nutrition label photo, recipe text or recipe link you submit is sent with your key. Depending on the provider you choose, the host is
+              exactly one of <code>api.anthropic.com</code>, <code>api.openai.com</code>, <code>generativelanguage.googleapis.com</code>, <code>openrouter.ai</code>,
+              <code>api.groq.com</code>, <code>api.mistral.ai</code>, <code>api.x.ai</code>, <code>api.deepseek.com</code>, or the https host of the base URL you enter for a
+              custom OpenAI-compatible provider. Settings shows the exact host. For OpenRouter, Satiago also sends the app's name and source-code address in the
+              <code>X-Title</code> and <code>HTTP-Referer</code> headers, as OpenRouter asks apps to do.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        These services have their own privacy policies: Open Food Facts (openfoodfacts.org) and the AI provider you choose (for example Anthropic, OpenAI, Google, OpenRouter,
+        Groq, Mistral AI, xAI or DeepSeek). Satiago does not send your profile, food log, body measurements or Health Connect data to any of them. Recipe import from a link
+        is available only with Anthropic, which fetches the page on its own servers; Satiago itself never contacts recipe websites. There are no other connections: no analytics, crash reporting, advertising or font and content delivery networks.
+      </p>
+
+      <h2>AI Assist and your API key</h2>
+      <p>
+        AI Assist is optional and off by default. You choose one AI provider and add your own API key for it. Keys are stored on your device only, one per provider: on Android
+        they are encrypted with the Android Keystore; in a web browser they are kept in the browser's site storage. Keys are never included in backups or exports, and are
+        removed by <em>Delete all data</em>. Usage of the AI provider is billed to your own account under the provider's terms. AI results are drafts: nothing is saved until you
+        review and confirm it.
+      </p>
+
+      <h2>Exports and backups</h2>
+      <p>
+        When you export data or a backup, Satiago creates a file and hands it to you through the system share sheet or a download. Where that file goes is up to you. Restoring a
+        backup replaces the data on the device after you confirm.
+      </p>
+
+      <h2>Young people</h2>
+      <p>
+        Satiago is not intended for people under 18 and collects no data from anyone. If the profile shows an age under 18, the app uses cautious targets (a standard calorie
+        floor and slow weight loss at most) and recommends involving a parent, doctor or dietitian.
+      </p>
+
+      <h2>Not medical advice</h2>
+      <p>Satiago gives estimates, not medical advice. Talk to a health professional before making big changes to your diet.</p>
+
+      <h2>Changes and contact</h2>
+      <p>
+        If this policy changes, the new version will be published with the app and its source code, with a new effective date. Questions can be asked by opening an issue at
+        <a href="https://github.com/VladDerK1ng/satiago/issues">github.com/VladDerK1ng/satiago/issues</a>. Please never post personal health data there.
+      </p>
+
+      <a class="back" href="./index.html#/more/about">&larr; Back to Satiago</a>
+    </main>
+  </body>
+</html>

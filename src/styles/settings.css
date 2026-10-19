@@ -1,0 +1,442 @@
+/* Settings, Body metrics, Data, About and More screens. Design tokens only (AD-11). */
+
+/* 48 px touch targets on these screens, even when the visual is smaller. */
+.fw-screen .btn,
+.fw-screen input.field,
+.fw-screen select.field {
+  min-height: 48px;
+}
+.fw-screen .icon-btn {
+  width: 48px;
+  height: 48px;
+  flex: none;
+}
+.fw-screen .seg button {
+  min-height: 42px;
+}
+.fw-screen .switch::before {
+  content: '';
+  position: absolute;
+  inset: -11px -4px;
+}
+.fw-screen .item {
+  min-height: 56px;
+}
+.fw-screen .num,
+.fw-screen .stat b {
+  font-variant-numeric: tabular-nums;
+}
+
+.fw-note {
+  font: var(--type-caption);
+  color: var(--color-text-muted);
+  margin: var(--space-2) 0 0;
+}
+.fw-note.center {
+  text-align: center;
+}
+.fw-body-text {
+  font: var(--type-body);
+  color: var(--color-text);
+  margin: 0;
+}
+.fw-body-text + .fw-body-text {
+  margin-top: var(--space-3);
+}
+
+.fw-facts {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.fw-facts li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font: var(--type-caption);
+  color: var(--color-text);
+}
+.fw-facts li::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+
+.fw-caution {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-caution) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-caution) 10%, var(--color-surface));
+  color: var(--color-text);
+  font: var(--type-caption);
+}
+
+.fw-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-caption);
+  color: var(--color-text-muted);
+}
+.fw-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-text-faint);
+}
+.fw-status.on {
+  color: var(--color-accent-strong);
+}
+.fw-status.on::before {
+  background: var(--color-positive);
+}
+
+.fw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.fw-actions .btn {
+  flex: 1 1 140px;
+}
+
+.fw-field-label {
+  display: block;
+  font: var(--type-caption);
+  color: var(--color-text-muted);
+  margin: var(--space-3) 0 var(--space-1);
+}
+.fw-key-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+.fw-key-form input {
+  flex: 1;
+  min-width: 0;
+}
+/* Beats the generic `input.field { width: 100% }` so the time picker doesn't squeeze its label. */
+input.field.fw-time {
+  width: 128px;
+  flex: none;
+}
+.fw-select {
+  max-width: 220px;
+}
+.fw-divider {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-3) 0;
+}
+
+/* Body metrics */
+.fw-log-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+.fw-log-form input[type='date'] {
+  flex: 1.2;
+  min-width: 0;
+}
+.fw-log-form .fw-value {
+  flex: 1;
+  min-width: 0;
+}
+.fw-hero {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.fw-hero-value {
+  font: var(--type-numeral-xl);
+  letter-spacing: -0.04em;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+.fw-hero-unit {
+  font: var(--type-body);
+  color: var(--color-text-muted);
+}
+.fw-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+.fw-stat-value {
+  font: var(--type-numeral);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.fw-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+}
+.fw-entry .grow {
+  font: var(--type-body);
+}
+.fw-entry b {
+  font-variant-numeric: tabular-nums;
+}
+
+.fw-photo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.fw-photo-controls input,
+.fw-photo-controls select {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.fw-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+.fw-photo-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.fw-photo-pick {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  overflow: hidden;
+  cursor: pointer;
+}
+.fw-photo-pick[aria-pressed='true'] {
+  outline: 3px solid var(--color-accent);
+  outline-offset: -3px;
+}
+.fw-photo-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+.fw-photo-img.missing {
+  background: var(--color-surface-sunken);
+  border: 1px dashed var(--color-border);
+}
+.fw-photo-badge {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font: var(--type-overline);
+}
+.fw-photo-open {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--color-text);
+}
+.fw-photo-open span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+}
+.fw-photo-meta {
+  font: var(--type-caption);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fw-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.fw-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.fw-viewer .fw-photo-img {
+  max-height: 62dvh;
+  object-fit: contain;
+  background: var(--color-surface-sunken);
+}
+
+/* Data */
+.fw-export {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.fw-export + .fw-export {
+  margin-top: var(--space-3);
+}
+.fw-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+.btn.fw-danger-solid {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-bg);
+}
+
+/* About */
+.fw-about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+  padding: var(--space-4) 0 var(--space-2);
+}
+.fw-about-name {
+  font: var(--type-title);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.fw-about-version {
+  font: var(--type-caption);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.fw-about-mission {
+  font: var(--type-body);
+  color: var(--color-text-muted);
+  max-width: 40ch;
+  margin: 0;
+}
+.fw-hosts {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.fw-hosts li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: var(--type-caption);
+  color: var(--color-text-muted);
+}
+.fw-hosts code {
+  font: var(--type-body);
+  font-weight: 650;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.fw-link {
+  color: var(--color-accent-strong);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+:root[data-theme='light'] .fw-link {
+  color: var(--color-accent);
+}
+.fw-link-row {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+/* More */
+.fw-more-ico {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-accent-strong);
+}
+:root[data-theme='light'] .fw-more-ico {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.fw-more-title {
+  font: var(--type-body);
+  font-weight: 650;
+}
+.fw-more-desc {
+  font: var(--type-caption);
+  color: var(--color-text-muted);
+}
+.fw-chevron {
+  color: var(--color-text-faint);
+}
+
+/* Tape measurements */
+.fw-tape-grid {
+  margin-top: var(--space-2);
+}
+.fw-entry-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2) 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fw-entry-open .fw-note {
+  overflow-wrap: anywhere;
+}
+/* Five body tabs on a phone: let a long label wrap rather than overflow its segment. */
+.seg button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+/* Import summary */
+.fw-import-list {
+  margin: var(--space-2) 0 var(--space-3);
+  padding-left: 1.2em;
+  display: grid;
+  gap: 4px;
+}

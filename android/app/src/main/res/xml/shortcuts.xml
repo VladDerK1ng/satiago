@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="log" android:enabled="true" android:icon="@drawable/ic_launcher_mono" android:shortcutShortLabel="@string/shortcut_log">
+        <intent android:action="android.intent.action.VIEW" android:data="satiago://log" android:targetPackage="io.github.vladderk1ng.satiago" android:targetClass="io.github.vladderk1ng.satiago.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="scan" android:enabled="true" android:icon="@drawable/ic_launcher_mono" android:shortcutShortLabel="@string/shortcut_scan">
+        <intent android:action="android.intent.action.VIEW" android:data="satiago://scan" android:targetPackage="io.github.vladderk1ng.satiago" android:targetClass="io.github.vladderk1ng.satiago.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="weigh" android:enabled="true" android:icon="@drawable/ic_launcher_mono" android:shortcutShortLabel="@string/shortcut_weigh">
+        <intent android:action="android.intent.action.VIEW" android:data="satiago://weigh" android:targetPackage="io.github.vladderk1ng.satiago" android:targetClass="io.github.vladderk1ng.satiago.MainActivity" />
+    </shortcut>
+</shortcuts>
