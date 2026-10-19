@@ -49,9 +49,16 @@ with an internet connection.
 
 ## Android
 
-**Option 1: the Android app.** When a release is published, download the latest `.apk` from the
-[Releases page](https://github.com/VladDerK1ng/satiago/releases) and open it. Android asks you to
-allow installs from your browser or file manager the first time.
+**Option 1: the Android app (recommended).**
+
+1. On your phone, open the [latest release](https://github.com/VladDerK1ng/satiago/releases/latest)
+   and download the `Satiago-….apk` file.
+2. Open the downloaded file. The first time, Android asks you to allow installs from your browser or
+   file manager. Allow it.
+3. Google Play Protect may warn that the app is unknown, because it does not come from the Play
+   Store. Tap **More details → Install anyway**.
+
+Updates: download the newer `.apk` from Releases and install it over the old one. Your data stays.
 
 **Option 2: build it yourself.** See [Build from source](../README.md#build-from-source).
 

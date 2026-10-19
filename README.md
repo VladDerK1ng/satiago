@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://vladderk1ng.github.io/satiago/"><b>Open the web app</b></a> &nbsp;·&nbsp;
   <a href="docs/INSTALL.md#iphone-and-ipad"><b>Install on iPhone</b></a> &nbsp;·&nbsp;
-  <a href="docs/INSTALL.md#android"><b>Install on Android</b></a>
+  <a href="https://github.com/VladDerK1ng/satiago/releases/latest"><b>Download for Android</b></a>
 </p>
 
 ---
@@ -31,8 +31,9 @@
 - **iPhone / iPad:** open <https://vladderk1ng.github.io/satiago/> in **Safari**, tap
   **Share → Add to Home Screen**, then open Satiago from your home screen. It runs full screen and
   offline. [Step-by-step guide](docs/INSTALL.md#iphone-and-ipad)
-- **Android:** install the APK from [Releases](https://github.com/VladDerK1ng/satiago/releases),
-  build it yourself, or install the web app from Chrome. [Guide](docs/INSTALL.md#android)
+- **Android:** download the APK from the
+  [latest release](https://github.com/VladDerK1ng/satiago/releases/latest) and open it.
+  [Guide](docs/INSTALL.md#android)
 - **Computer:** open the web app in Chrome, Edge or Safari.
 
 The web version has everything except name search on Open Food Facts, Health Connect and
