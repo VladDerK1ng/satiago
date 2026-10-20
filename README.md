@@ -78,6 +78,7 @@ reminders. [Full comparison](docs/INSTALL.md#what-is-different-between-the-versi
 
 **Food database**
 - 300+ built-in generic foods with micronutrients
+- Offline USDA FoodData Central database: about 12,800 generic foods (Foundation, SR Legacy, FNDDS) with micronutrients and household servings, searched on the device
 - On-device barcode scanning and online lookup through [Open Food Facts](https://world.openfoodfacts.org)
 - Custom foods, recipes (nested, cooked weight), favorites
 
@@ -206,7 +207,8 @@ and [NOTICE](NOTICE).
 
 - Online food data from [Open Food Facts](https://world.openfoodfacts.org), available under the
   [Open Database License](https://opendatacommons.org/licenses/odbl/1-0/)
-- Built-in food values approximate [USDA FoodData Central](https://fdc.nal.usda.gov) (public domain)
+- Built-in food values approximate [USDA FoodData Central](https://fdc.nal.usda.gov) (public domain, CC0 1.0); the offline
+  database is converted from its Foundation, SR Legacy and FNDDS datasets by `scripts/build-usda.mjs`
 - [Manrope](https://github.com/sharanda/manrope) typeface, SIL Open Font License 1.1 ([text](LICENSES/OFL-1.1.txt))
 - Barcode scanning on Android by Google ML Kit (on-device, with its diagnostics upload disabled);
   on the web by [zxing-wasm](https://github.com/Sec-ant/zxing-wasm) (MIT)

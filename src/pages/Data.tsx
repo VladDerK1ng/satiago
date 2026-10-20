@@ -124,7 +124,7 @@ export default function DataPage() {
   /** Custom foods, saved online foods and recipes, per 100 g, so they can be reused elsewhere. */
   const exportLibrary = () => {
     const rows: unknown[][] = [['type', 'name', 'brand', 'barcode', 'serving', 'serving_grams', ...NUTRIENT_KEYS.map((k) => `${k}_per_100g`)]];
-    for (const f of foods.filter((x) => x.source !== 'builtin').sort((x, y) => x.name.localeCompare(y.name))) {
+    for (const f of foods.filter((x) => x.source !== 'builtin' && x.source !== 'usda').sort((x, y) => x.name.localeCompare(y.name))) {
       const s = f.servings[0];
       rows.push([f.source === 'recipe' ? 'recipe' : f.source === 'openfoodfacts' ? 'online' : 'custom', f.name, f.brand, f.barcode, s?.label, s?.grams, ...NUTRIENT_KEYS.map((k) => f.per100[k])]);
     }
@@ -311,7 +311,7 @@ export default function DataPage() {
             </button>
           </div>
           <div className="fw-export">
-            <button className="btn block" disabled={busy !== null || !foods.some((f) => f.source !== 'builtin')} onClick={() => run('library', exportLibrary)}>
+            <button className="btn block" disabled={busy !== null || !foods.some((f) => f.source !== 'builtin' && f.source !== 'usda')} onClick={() => run('library', exportLibrary)}>
               {busy === 'library' ? t('data.exporting') : t('data.exportLibrary')}
             </button>
           </div>

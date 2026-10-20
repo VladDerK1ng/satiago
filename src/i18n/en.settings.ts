@@ -351,6 +351,9 @@ export const enSettings = {
   'about.offBody':
     'Online search and barcode lookups use Open Food Facts, a free, collaborative food database. Its database is available under the Open Database License (ODbL), and product images under CC BY-SA. Foods from Open Food Facts are marked with their source.',
   'about.offLink': 'Open Food Facts',
+  'about.usdaBody':
+    'Generic foods come from USDA FoodData Central (Foundation Foods, SR Legacy and FNDDS), which is in the public domain (CC0 1.0). The database ships with the app and is searched on your device. Foods from it are marked USDA.',
+  'about.usdaLink': 'USDA FoodData Central',
   'about.odblLink': 'Open Database License (ODbL)',
   'about.network': 'Network connections',
   'about.networkIntro': 'Satiago works offline. It connects to the internet only in these cases:',

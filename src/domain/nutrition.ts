@@ -107,21 +107,39 @@ export const KJ_PER_KCAL = 4.184;
 export const fmtEnergy = (kcal: number | undefined, unit: 'kcal' | 'kJ') =>
   kcal === undefined ? '–' : unit === 'kJ' ? `${Math.round(kcal * KJ_PER_KCAL)}` : `${Math.round(kcal)}`;
 
-/** Search score for foods; 0 means no match. */
-export function scoreFood(f: Pick<Food, 'name' | 'brand' | 'aliases' | 'category'>, q: string): number {
-  // Accents are dropped ("Ovăz" matches "ovaz"); letters of any script are kept.
-  const norm = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize('NFKD')
-      .replace(/\p{M}+/gu, '')
-      .replace(/[^\p{L}\p{N} ]+/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  const query = norm(q);
+type Searchable = Pick<Food, 'name' | 'brand' | 'aliases' | 'category'>;
+
+/** Search text: accents are dropped ("Ovăz" matches "ovaz"); letters of any script are kept. */
+export const normSearch = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/\p{M}+/gu, '')
+    .replace(/[^\p{L}\p{N} ]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+interface SearchKey {
+  name: string;
+  hay: string;
+}
+const searchKeys = new WeakMap<Searchable, SearchKey>();
+/** Normalized name and haystack of a food, computed once per food object. */
+function searchKey(f: Searchable): SearchKey {
+  let k = searchKeys.get(f);
+  if (!k) {
+    const name = normSearch(f.name);
+    k = { name, hay: [name, normSearch(f.brand ?? ''), ...(f.aliases ?? []).map(normSearch), normSearch(f.category)].join(' ') };
+    searchKeys.set(f, k);
+  }
+  return k;
+}
+
+/** Search score for foods; 0 means no match. Pass `normalized` when the query is already normSearch'ed. */
+export function scoreFood(f: Searchable, q: string, normalized = false): number {
+  const query = normalized ? q : normSearch(q);
   if (!query) return 1;
-  const name = norm(f.name);
-  const hay = [name, norm(f.brand ?? ''), ...(f.aliases ?? []).map(norm), norm(f.category)].join(' ');
+  const { name, hay } = searchKey(f);
   if (name === query) return 100;
   if (name.startsWith(query)) return 70 - name.length / 100;
   let s = 0;

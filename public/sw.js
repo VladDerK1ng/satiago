@@ -18,7 +18,10 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(req)
         .then((r) => {
-          if (isShell && r.ok) caches.open(CACHE).then((c) => c.put('./index.html', r.clone()));
+          if (isShell && r.ok) {
+            const copy = r.clone();
+            caches.open(CACHE).then((c) => c.put('./index.html', copy));
+          }
           return r;
         })
         .catch(() => (isShell ? caches.match('./index.html') : caches.match(req))),
@@ -27,7 +30,19 @@ self.addEventListener('fetch', (e) => {
   }
   e.respondWith(
     caches.match(req).then((hit) => hit || fetch(req).then((r) => {
-      if (r.ok) caches.open(CACHE).then((c) => c.put(req, r.clone()));
+      if (!r.ok) return r;
+      // Clone before the page starts reading the body.
+      const copy = r.clone();
+      caches.open(CACHE).then(async (c) => {
+        await c.put(req, copy);
+        // Versioned files (data/usda-foods.json?v=…) keep only the newest copy.
+        const url = new URL(req.url);
+        if (!url.search) return;
+        for (const k of await c.keys()) {
+          const u = new URL(k.url);
+          if (u.pathname === url.pathname && u.search !== url.search) await c.delete(k);
+        }
+      });
       return r;
     })),
   );

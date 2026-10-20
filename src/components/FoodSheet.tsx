@@ -105,7 +105,7 @@ export function FoodSheet({
             <>
               {food.brand ? `${food.brand} · ` : ''}
               {food.category}
-              {food.source === 'openfoodfacts' ? ` · ${t('food.source.off')}` : ''}
+              {food.source === 'openfoodfacts' ? ` · ${t('food.source.off')}` : food.source === 'usda' ? ` · ${t('food.source.usda')}` : ''}
             </>
           )}
         </span>

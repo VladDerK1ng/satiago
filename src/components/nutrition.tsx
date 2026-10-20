@@ -146,7 +146,7 @@ export function FoodRow({ f, onClick, right }: { f: Food; onClick?: () => void; 
         <div className="muted small ellipsis num">
           {f.brand ? `${f.brand} · ` : ''}
           {s?.label} · {fmtEnergy(k, eu)} {eu} · P{Math.round(p)} F{Math.round(fat)} C{Math.round(c)}
-          {f.source === 'openfoodfacts' ? ` · ${t('food.source.off')}` : ''}
+          {f.source === 'openfoodfacts' ? ` · ${t('food.source.off')}` : f.source === 'usda' ? ` · ${t('food.source.usda')}` : ''}
         </div>
       </span>
     </>

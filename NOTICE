@@ -24,7 +24,8 @@ Third-party data and assets
   available under the Open Database License (ODbL) 1.0; individual contents under the Database
   Contents License. Foods saved from Open Food Facts keep that attribution in the app.
 - Built-in generic food values are derived from USDA FoodData Central (https://fdc.nal.usda.gov),
-  which is in the public domain (CC0 1.0).
+  which is in the public domain (CC0 1.0). The offline food database (public/data/usda-foods.json)
+  is converted from its Foundation Foods, SR Legacy and FNDDS datasets by scripts/build-usda.mjs.
 - Manrope typeface, Copyright 2019 The Manrope Project Authors, SIL Open Font License 1.1
   (full text in LICENSES/OFL-1.1.txt).
 - Barcode decoding in the web version uses zxing-wasm and barcode-detector (MIT).

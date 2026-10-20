@@ -50,6 +50,12 @@ export default function About() {
 
         <h2>{t('about.data')}</h2>
         <div className="card">
+          <p className="fw-body-text">{t('about.usdaBody')}</p>
+          <div className="fw-link-row">
+            <a className="fw-link" href="https://fdc.nal.usda.gov" target="_blank" rel="noopener noreferrer">
+              {t('about.usdaLink')}
+            </a>
+          </div>
           <p className="fw-body-text">{t('about.offBody')}</p>
           <div className="fw-link-row" style={{ gap: 'var(--space-4)', flexWrap: 'wrap' }}>
             <a className="fw-link" href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">

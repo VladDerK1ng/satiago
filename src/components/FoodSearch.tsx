@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { scoreFood } from '../domain/nutrition';
+import { loadUsdaFoods } from '../data/usda';
+import { normSearch, scoreFood } from '../domain/nutrition';
 import type { Food } from '../domain/types';
 import { rankHistory } from '../domain/body';
 import { t } from '../i18n';
@@ -36,6 +37,23 @@ export function SkeletonRows({ count = 3, label }: { count?: number; label?: str
   );
 }
 
+/** The offline USDA database, loaded on first search; null until it arrives (or if it fails). */
+function useUsdaFoods(enabled: boolean) {
+  const [usda, setUsda] = useState<Food[] | null>(null);
+  useEffect(() => {
+    if (!enabled || usda) return;
+    let alive = true;
+    loadUsdaFoods().then(
+      (f) => alive && setUsda(f),
+      () => undefined, // Search still covers built-in and own foods.
+    );
+    return () => {
+      alive = false;
+    };
+  }, [enabled, usda]);
+  return usda;
+}
+
 function useOnline() {
   const [online, setOnline] = useState(isOnline);
   useEffect(() => {
@@ -52,7 +70,7 @@ function useOnline() {
 }
 
 /**
- * Search across built-in, custom, recipe and online foods. Calls onPick with the chosen food.
+ * Search across built-in, USDA, custom, recipe and online foods. Calls onPick with the chosen food.
  * Scanned barcodes resolve to a local food first, then Open Food Facts; unknown codes go to
  * `onUnknownBarcode` when given.
  */
@@ -85,6 +103,7 @@ export function FoodSearch({
   const [searching, setSearching] = useState(false);
   const [lookingUp, setLookingUp] = useState<string>();
   const [scan, setScan] = useState(startScan);
+  const usda = useUsdaFoods(tab === 'search' && q.trim().length > 0);
 
   useEffect(() => {
     setRemote(null);
@@ -115,29 +134,38 @@ export function FoodSearch({
     return m;
   }, [log]);
 
+  // USDA foods already saved locally (picked before) appear once, as the saved copy.
+  const searchPool = useMemo(() => {
+    if (!usda) return foods;
+    const own = new Set(foods.map((f) => f.id));
+    return [...foods, ...usda.filter((f) => !own.has(f.id))];
+  }, [foods, usda]);
+
   const results = useMemo(() => {
     let pool: Food[];
     if (tab === 'recent') pool = history;
     else if (tab === 'favorites') pool = favorites.map(lookup).filter((f): f is Food => !!f);
-    else if (tab === 'mine') pool = foods.filter((f) => f.source !== 'builtin');
-    else pool = foods;
+    else if (tab === 'mine') pool = foods.filter((f) => f.source !== 'builtin' && f.source !== 'usda');
+    else pool = searchPool;
     if (!q.trim()) {
       if (tab !== 'search') return pool;
       // New users have no history yet: suggest common staples instead of an empty screen.
       if (recent.length) return recent.slice(0, 15);
       return POPULAR.map((id) => lookup(id)).filter((f): f is Food => !!f);
     }
+    const query = normSearch(q);
     return pool
       .map((f) => {
         // Frequency and own-food bonuses only rank foods that match; they never add a non-match.
-        const base = scoreFood(f, q);
-        return { f, s: base > 0 ? base + Math.min(10, (frequency.get(f.id) ?? 0) * 2) + (f.source !== 'builtin' ? 3 : 0) : 0 };
+        const base = scoreFood(f, query, true);
+        const own = f.source !== 'builtin' && f.source !== 'usda';
+        return { f, s: base > 0 ? base + Math.min(10, (frequency.get(f.id) ?? 0) * 2) + (own ? 3 : 0) : 0 };
       })
       .filter((x) => x.s > 0)
       .sort((a, b) => b.s - a.s)
       .slice(0, 60)
       .map((x) => x.f);
-  }, [tab, q, foods, recent, history, favorites, lookup, frequency]);
+  }, [tab, q, foods, searchPool, recent, history, favorites, lookup, frequency]);
 
   const searchOnline = async () => {
     if (!isOnline()) return toast(t('common.offline'));
@@ -184,6 +212,11 @@ export function FoodSearch({
 
   const pickOnline = (f: Food) => {
     saveFood(f); // keep a local copy so history and favorites resolve offline
+    onPick(f);
+  };
+  // A USDA food is kept locally once picked, so history, favorites and recipes resolve without the database.
+  const pick = (f: Food) => {
+    if (f.source === 'usda' && !lookup(f.id)) saveFood(f);
     onPick(f);
   };
 
@@ -246,7 +279,7 @@ export function FoodSearch({
           <FoodRow
             key={f.id}
             f={f}
-            onClick={() => onPick(f)}
+            onClick={() => pick(f)}
             right={
               favorites.includes(f.id) ? (
                 <span className="fav-mark" role="img" aria-label={t('food.search.favorite')}>

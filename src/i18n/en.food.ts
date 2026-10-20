@@ -96,6 +96,7 @@ export const enFood = {
   'food.macro.summary': '{kcal} {unit}, protein {p} g, fat {f} g, carbs {c} g',
   'food.label.energyKj': 'Energy (kJ)',
   'food.source.off': 'Open Food Facts',
+  'food.source.usda': 'USDA',
 
   // Food sheet
   'food.sheet.add': 'Add to log',

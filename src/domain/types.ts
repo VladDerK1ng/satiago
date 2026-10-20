@@ -77,7 +77,7 @@ export interface Serving {
   grams: number;
 }
 
-export type FoodSource = 'builtin' | 'custom' | 'recipe' | 'openfoodfacts';
+export type FoodSource = 'builtin' | 'custom' | 'recipe' | 'openfoodfacts' | 'usda';
 
 export interface Food {
   id: string;
