@@ -23,6 +23,7 @@ export const en = {
   'dashboard.expenditure': 'Expenditure',
   'dashboard.holding': 'Holding · log weight & food',
   'dashboard.updating': 'Updating daily',
+  'dashboard.uncertainty': 'Typical uncertainty of the estimate. It shrinks as you log food and weigh in.',
   'dashboard.trend': 'Weight trend',
   'dashboard.weeklyRate': 'Weekly rate',
   'dashboard.goalProgress': 'Goal progress',

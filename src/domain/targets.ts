@@ -1,4 +1,4 @@
-import { age, bmr, KCAL_PER_KG } from './expenditure';
+import { age, bmr, energyDensity } from './expenditure';
 import type { CalorieFloor, DietType, Goal, MacroTarget, Profile, ProteinPref } from './types';
 
 /** Protein in g per kg of reference body mass. */
@@ -50,11 +50,14 @@ export function proteinReferenceKg(p: Profile, weightKg: number): number {
   return Math.min(weightKg, cap);
 }
 
-/** Signed daily energy delta for the goal rate (negative when losing). */
-export function goalDailyDelta(g: Pick<Goal, 'type' | 'ratePct'>, weightKg: number): number {
+/**
+ * Signed daily energy delta for the goal rate (negative when losing). `kcalPerKg` is the
+ * person's energy per kg of body-mass change, the same one expenditure is estimated with.
+ */
+export function goalDailyDelta(g: Pick<Goal, 'type' | 'ratePct'>, weightKg: number, kcalPerKg: number): number {
   if (g.type === 'maintain') return 0;
   const kgPerWeek = (g.ratePct / 100) * weightKg;
-  const d = (kgPerWeek * KCAL_PER_KG) / 7;
+  const d = (kgPerWeek * kcalPerKg) / 7;
   return g.type === 'lose' ? -d : d;
 }
 
@@ -92,11 +95,14 @@ export interface TargetResult {
   flooredBy?: number;
 }
 
-/** Coached targets for each weekday (Monday first). */
-export function coachedTargets(goal: Goal, expenditure: number, weightKg: number, p: Profile): TargetResult {
+/**
+ * Coached targets for each weekday (Monday first). `kcalPerKg` defaults to the energy density
+ * from the profile; pass the analysis' value so logged body fat is used too.
+ */
+export function coachedTargets(goal: Goal, expenditure: number, weightKg: number, p: Profile, kcalPerKg = energyDensity(p, weightKg, p.bodyFat)): TargetResult {
   const g = safeGoal(goal, p);
   const floor = calorieFloor(g.floor, p, weightKg);
-  let avg = expenditure + goalDailyDelta(g, weightKg);
+  let avg = expenditure + goalDailyDelta(g, weightKg, kcalPerKg);
   let flooredBy: number | undefined;
   if (avg < floor) {
     flooredBy = floor - avg;

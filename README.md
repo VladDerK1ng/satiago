@@ -100,15 +100,28 @@ reminders. [Full comparison](docs/INSTALL.md#what-is-different-between-the-versi
 
 ## How the coaching works
 
-Satiago keeps a smoothed **weight trend** that filters out day-to-day water swings. Over a rolling
-window it compares how much you ate with how much your trend weight changed:
+Satiago keeps a smoothed **weight trend** that filters out day-to-day water swings. Expenditure is
+energy balance — what you logged minus the energy your body stored — read two independent ways and
+averaged:
 
 ```
-expenditure ≈ average intake − (trend change × 7,700 kcal/kg) ÷ days
+expenditure ≈ average intake − weight slope (kg/day) × energy density (kcal/kg)
 ```
 
-The estimate is smoothed, ignores days you mark as partially logged, counts days marked as fasting
-as zero, and is held (not guessed) when there is no recent weigh-in. Each week your targets are
+1. A **rolling regression** fits a line through your weigh-ins of the last weeks (recent ones count
+   more, odd ones are down-weighted) and compares its slope with what you ate over the same days.
+2. A **Kalman filter** predicts tomorrow's weight from your intake and its expenditure estimate,
+   then corrects the estimate by the miss — the loop MacroFactor describes for its V3 algorithm,
+   with the corrections sized by measured noise instead of a hand-tuned constant.
+
+Both use the same physiology. The energy density depends on body composition (Forbes' rule, Hall's
+tissue densities): a lean person gains and loses more lean tissue, which stores far less energy
+than fat, so it ranges from about 5,000 to over 8,000 kcal/kg. Weight swings from glycogen and its
+water after a change in carbs are corrected for when you log carbs. Each estimate shows ± its
+typical uncertainty, which shrinks as data builds up. Days you mark as partially logged do not
+count, days marked as fasting count as zero, and the estimate is held (not guessed) without a
+weigh-in in the last week or when more than 3 of the last 7 days are unlogged. The method, sources
+and benchmark are in [docs/EXPENDITURE.md](docs/EXPENDITURE.md). Each week your targets are
 recalculated from that expenditure and your goal rate, with protein set per kilogram of body weight
 and a calorie floor (never below 1,000 kcal for women or 1,200 kcal for men, and usually higher
 because it is tied to your resting energy). People under 18 always get the standard floor and at

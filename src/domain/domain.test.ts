@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analyze, buildSnapshot, checkInDue, intakeDays, loggingStreak, nextCheckIn, targetFor } from './coach';
-import { bmr, expenditureSeries, initialExpenditure, KCAL_PER_KG } from './expenditure';
+import { bmr, energyDensity, expenditureSeries, initialExpenditure, KCAL_PER_KG } from './expenditure';
 import { dayTotals, foodFromEntry, recipeToFood, scale, scoreFood } from './nutrition';
 import { coachedTargets, goalDailyDelta, isMinor, safeGoal } from './targets';
 import { dailyTrend, fromIndex, dayIndex } from './trend';
@@ -122,15 +122,110 @@ describe('expenditure', () => {
     expect(Math.abs(s[40].expenditure - 2580)).toBeLessThanOrEqual(50);
     expect(Math.abs(s.at(-1)!.expenditure - 2600)).toBeLessThan(150);
   });
+  it('moves smoothly from day to day once settled', () => {
+    const { body, intake } = simulate(90, () => 2100);
+    const s = expenditureSeries(intake, dailyTrend(body, 0.1), 2600, day(89));
+    const steps = s.slice(29).map((p, i) => Math.abs(p.expenditure - s[28 + i].expenditure));
+    expect(Math.max(...steps)).toBeLessThanOrEqual(25);
+  });
+  it('is not tilted by one odd weigh-in', () => {
+    const { body, intake } = simulate(60, () => 2100);
+    const odd = body.map((b, i) => (i === 55 ? { ...b, weight: b.weight! + 4 } : b));
+    const a = expenditureSeries(intake, dailyTrend(body, 0.1), 2600, day(59));
+    const b = expenditureSeries(intake, dailyTrend(odd, 0.1), 2600, day(59));
+    // The unsmoothed estimate moves far less than an ordinary least-squares line would (~200 kcal).
+    for (let i = 55; i < 60; i++) expect(Math.abs(a[i].raw! - b[i].raw!)).toBeLessThan(100);
+    expect(Math.abs(a[59].expenditure - b[59].expenditure)).toBeLessThan(30);
+  });
+  it('restarts after a break instead of reading the weight change during it as energy balance', () => {
+    const { body, intake } = simulate(80, () => 2100);
+    // Days 40–59 have no logs and no weigh-ins; the weight drops 3 kg more than intake explains.
+    const gapBody = body.flatMap((b, i) => (i >= 40 && i < 60 ? [] : [i >= 60 ? { ...b, weight: b.weight! - 3 } : b]));
+    const gapIntake = intake.filter((_, i) => i < 40 || i >= 60);
+    const s = expenditureSeries(gapIntake, dailyTrend(gapBody, 0.1, day(79)), 2600, day(79));
+    expect(s[50].held).toBe(true);
+    expect(s[59].expenditure).toBe(s[45].expenditure);
+    for (const p of s.slice(60)) expect(Math.abs(p.expenditure - 2600)).toBeLessThan(120);
+  });
+  it('reads a carb-driven water drop as water, not fat', () => {
+    // Maintenance at 2500 kcal; carbs drop from 300 g to 40 g on day 40 and 1.3 kg of glycogen water leaves.
+    const body: BodyEntry[] = [];
+    const withCarbs = [];
+    const caloriesOnly = [];
+    for (let i = 0; i < 80; i++) {
+      const drop = i < 40 ? 0 : i === 40 ? 0.5 : i === 41 ? 0.9 : 1.3;
+      body.push({ date: day(i), weight: 80 - drop + (i % 3 === 0 ? 0.3 : i % 3 === 1 ? -0.2 : 0) });
+      withCarbs.push({ date: day(i), kcal: 2500, carbs: i < 40 ? 300 : 40 });
+      caloriesOnly.push({ date: day(i), kcal: 2500 });
+    }
+    const a = expenditureSeries(withCarbs, dailyTrend(body, 0.1), 2500, day(79));
+    const b = expenditureSeries(caloriesOnly, dailyTrend(body, 0.1), 2500, day(79));
+    for (const p of a.slice(40)) expect(Math.abs(p.expenditure - 2500)).toBeLessThan(60);
+    expect(b[60].expenditure - 2500).toBeGreaterThan(150);
+  });
+  it('does not slowly re-read a lasting carb change as fat', () => {
+    const body: BodyEntry[] = [];
+    const intake = [];
+    for (let i = 0; i < 130; i++) {
+      const drop = i < 40 ? 0 : i === 40 ? 0.5 : i === 41 ? 0.9 : 1.3;
+      body.push({ date: day(i), weight: 80 - drop + (i % 3 === 0 ? 0.3 : i % 3 === 1 ? -0.2 : 0) });
+      intake.push({ date: day(i), kcal: 2500, carbs: i < 40 ? 300 : 40 });
+    }
+    const s = expenditureSeries(intake, dailyTrend(body, 0.1), 2500, day(129));
+    for (const p of s.slice(40)) expect(Math.abs(p.expenditure - 2500)).toBeLessThan(60);
+  });
+  it('ignores an incomplete log for today', () => {
+    const { body, intake } = simulate(60, () => 2100);
+    const run = (today: typeof intake) => expenditureSeries(today, dailyTrend(body, 0.1), 2600, day(59)).at(-1)!;
+    const complete = run(intake);
+    expect(run(intake.map((d, i) => (i === 59 ? { ...d, kcal: 400 } : d)))).toEqual(complete);
+    expect(run(intake.slice(0, 59))).toEqual(complete);
+  });
+  it('keeps updating with up to 3 unlogged days a week and holds beyond that', () => {
+    const intake = Array.from({ length: 60 }, (_, i) => ({ date: day(i), kcal: 2100 }));
+    const body: BodyEntry[] = Array.from({ length: 60 }, (_, i) => ({ date: day(i), weight: 85 - i * 0.065 }));
+    const run = (missing: number) =>
+      expenditureSeries(intake.filter((_, i) => i < 30 || i % 7 >= missing), dailyTrend(body, 0.1), 2600, day(59)).slice(35);
+    expect(run(3).filter((p) => p.held)).toHaveLength(0);
+    expect(run(4).filter((p) => p.held).length).toBeGreaterThan(20);
+  });
+  it('reports an uncertainty that shrinks as data accumulates', () => {
+    const { body, intake } = simulate(80, () => 2100);
+    const s = expenditureSeries(intake, dailyTrend(body, 0.1), 2600, day(79));
+    expect(s[5].sd!).toBeGreaterThan(250);
+    expect(s[79].sd!).toBeLessThan(s[20].sd!);
+    expect(s[79].sd!).toBeLessThan(120);
+  });
+  it('uses a lower energy density for lean tissue changes (Forbes)', () => {
+    const lean = energyDensity(profile, 75, 10);
+    const fatter = energyDensity(profile, 110, 35);
+    expect(lean).toBeGreaterThan(4500);
+    expect(lean).toBeLessThan(6000);
+    expect(fatter).toBeGreaterThan(7700);
+    expect(fatter).toBeLessThan(9440);
+    // Without a body-fat value it is estimated from BMI.
+    expect(energyDensity(profile, 80)).toBeGreaterThan(lean);
+  });
 });
 
 describe('targets', () => {
   it('applies the goal deficit', () => {
-    expect(Math.round(goalDailyDelta(goal, 90))).toBe(-495);
+    // 0.5 % of 90 kg per week.
+    expect(Math.round(goalDailyDelta(goal, 90, KCAL_PER_KG))).toBe(-495);
+    const rho = energyDensity(profile, 90);
+    const deficit = (0.45 * rho) / 7;
+    expect(goalDailyDelta(goal, 90, rho)).toBeCloseTo(-deficit);
     const r = coachedTargets(goal, 2700, 90, profile);
-    expect(Math.abs(r.average - (2700 - 495))).toBeLessThan(15);
+    expect(Math.abs(r.average - (2700 - deficit))).toBeLessThan(15);
     expect(r.targets).toHaveLength(7);
     expect(r.targets[0].protein).toBe(Math.round(1.6 * Math.min(90, 27 * 1.8 ** 2)));
+  });
+  it('asks a leaner person for a smaller deficit for the same weekly loss', () => {
+    const lean = coachedTargets(goal, 2700, 90, { ...profile, bodyFat: 12 });
+    const fatter = coachedTargets(goal, 2700, 90, { ...profile, bodyFat: 35 });
+    expect(2700 - lean.average).toBeLessThan(2700 - fatter.average - 100);
+    // The analysis' density wins over the profile default.
+    expect(Math.abs(coachedTargets(goal, 2700, 90, profile, KCAL_PER_KG).average - (2700 - 495))).toBeLessThan(15);
   });
   it('respects the calorie floor', () => {
     const r = coachedTargets({ ...goal, ratePct: 1 }, 1800, 70, { ...profile, sex: 'female', heightCm: 160 });
@@ -155,6 +250,10 @@ describe('coach', () => {
     const body: BodyEntry[] = Array.from({ length: 21 }, (_, i) => ({ date: day(i), weight: 88 - i * 0.05 }));
     const a = analyze({ log, meta: [], body, profile, unit: 'kg', trendAlpha: 0.1, today: day(20), fallbackWeight: 88 });
     expect(a.held).toBe(false);
+    expect(a.kcalPerKg).toBeCloseTo(energyDensity(profile, a.currentWeightKg));
+    // A logged body-fat value is used for the energy density.
+    const withFat = analyze({ log, meta: [], body: [...body, { date: day(5), bodyFat: 12 }], profile, unit: 'kg', trendAlpha: 0.1, today: day(20), fallbackWeight: 88 });
+    expect(withFat.kcalPerKg).toBeCloseTo(energyDensity(profile, withFat.currentWeightKg, 12));
     const snap = buildSnapshot(goal, a, profile, day(20));
     expect(targetFor(day(21), goal, [snap])?.kcal).toBeGreaterThan(1500);
     expect(targetFor(day(19), goal, [snap])).toBeUndefined();
@@ -164,6 +263,13 @@ describe('coach', () => {
   it('treats fasted days as zero intake', () => {
     const days = intakeDays([], [{ date: day(0), fasted: true }]);
     expect(days[0].fasted).toBe(true);
+  });
+  it('totals carbs only for days where every entry has them', () => {
+    const e = (id: string, date: string, kcal: number, carbs?: number): LogEntry => ({ id, date, minute: 0, name: 'x', icon: '', n: { kcal, carbs } });
+    const days = intakeDays([e('a', day(0), 300, 40), e('b', day(0), 200, 25), e('c', day(1), 300, 40), e('d', day(1), 250)], []);
+    expect(days[0]).toMatchObject({ kcal: 500, carbs: 65 });
+    expect(days[1].kcal).toBe(550);
+    expect(days[1].carbs).toBeUndefined();
   });
   it('computes streaks and next check-in', () => {
     const log = [day(0), day(1), day(2)].map((d) => ({ id: d, date: d, minute: 0, name: '', icon: '', n: {} }));

@@ -53,8 +53,9 @@ export default function GoalWizard() {
     checkInDay,
     manual,
   };
-  const preview = useMemo(() => coachedTargets(goal, a.current, a.currentWeightKg, st.profile), [JSON.stringify(goal), a.current, a.currentWeightKg, st.profile]); // eslint-disable-line react-hooks/exhaustive-deps
-  const weeklyChange = (goalDailyDelta(goal, a.currentWeightKg) * 7) / 7700;
+  const preview = useMemo(() => coachedTargets(goal, a.current, a.currentWeightKg, st.profile, a.kcalPerKg), [JSON.stringify(goal), a.current, a.currentWeightKg, a.kcalPerKg, st.profile]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dailyDelta = goalDailyDelta(goal, a.currentWeightKg, a.kcalPerKg);
+  const weeklyChange = (dailyDelta * 7) / a.kcalPerKg;
   const weeks = goalWeight && weeklyChange ? Math.abs((goalWeight - current) / fromKg(weeklyChange, unit)) : undefined;
   const e = (k: number) => (eu === 'kJ' ? Math.round(k * 4.184) : k);
 
@@ -94,7 +95,7 @@ export default function GoalWizard() {
           <input type="range" min={0.05} max={type === 'lose' ? (minor ? 0.5 : 1.25) : 0.75} step={0.05} value={rate} onChange={(ev) => setRate(Number(ev.target.value))} style={{ width: '100%', marginTop: 8 }} aria-label="Rate" />
           {minor && <p className="small day-flag card tight">{t('goal.minorNote')}</p>}
           <div className="card small">
-            {rate}% per week ≈ {Math.abs(Math.round(fromKg(weeklyChange, unit) * 100) / 100)} {unit}/week, {Math.abs(Math.round(goalDailyDelta(goal, a.currentWeightKg)))} kcal/day {type === 'lose' ? 'deficit' : 'surplus'}.
+            {rate}% per week ≈ {Math.abs(Math.round(fromKg(weeklyChange, unit) * 100) / 100)} {unit}/week, {Math.abs(Math.round(dailyDelta))} kcal/day {type === 'lose' ? 'deficit' : 'surplus'}.
             {weeks && Number.isFinite(weeks) ? ` About ${Math.ceil(weeks)} weeks to reach ${goalWeight} ${unit}.` : ''}
           </div>
         </>

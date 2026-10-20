@@ -34,7 +34,6 @@ const CARD_NAMES: Record<DashboardCardId, StringKey> = {
 };
 /** Weeks shown in the habit calendar (columns), Monday-first rows. */
 const HABIT_WEEKS = 12;
-const KCAL_PER_KG = 7700;
 
 const celebrated = 'satiago-goal-celebrated';
 
@@ -87,11 +86,11 @@ export default function Dashboard() {
   }, [st.log, goal, st.snapshots, today]);
 
   const progress = goal && lastTrend !== undefined ? goalProgress(goal, lastTrend) : undefined;
-  const goalRateUnit = goal ? ((goalDailyDelta(goal, a.currentWeightKg) * 7) / 7700) * (unit === 'kg' ? 1 : 2.20462) : 0;
+  const goalRateUnit = goal ? ((goalDailyDelta(goal, a.currentWeightKg, a.kcalPerKg) * 7) / a.kcalPerKg) * (unit === 'kg' ? 1 : 2.20462) : 0;
   const projected = lastTrend !== undefined ? projectWeight(lastTrend, a.ratePerWeek, goalRateUnit, 30, st.settings.projection) : undefined;
   const energy = useMemo(() => energyBalance(st.log, st.meta, a.expenditure, today, 7), [st.log, st.meta, a.expenditure, today]);
   // Weight change the energy balance implies, in the user's unit per week.
-  const impliedRate = energy ? ((energy.balance * 7) / KCAL_PER_KG) * (unit === 'kg' ? 1 : 2.20462) : undefined;
+  const impliedRate = energy ? ((energy.balance * 7) / a.kcalPerKg) * (unit === 'kg' ? 1 : 2.20462) : undefined;
   const calendar = useMemo(() => {
     // Start on the Monday HABIT_WEEKS - 1 weeks before this week, so columns are whole weeks.
     const dow = (new Date(today + 'T00:00').getDay() + 6) % 7;
@@ -157,6 +156,11 @@ export default function Dashboard() {
             <span className="overline">{t('dashboard.expenditure')}</span>
             <b className="num-xl">
               <Ticker value={e(a.current) ?? 0} /> <span className="small muted">{eu}</span>
+              {a.currentSd !== undefined && (
+                <span className="small muted" title={t('dashboard.uncertainty')}>
+                  {' '}± {e(a.currentSd)}
+                </span>
+              )}
             </b>
           </div>
           <span className={`tag ${a.held ? '' : 'tag-live'}`}>{a.held ? t('dashboard.holding') : t('dashboard.updating')}</span>

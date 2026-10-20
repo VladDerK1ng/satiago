@@ -60,7 +60,7 @@ export default function CheckIn() {
   const snap = buildSnapshot(goal, analysis, st.profile, today, previous);
   // Collaborative tweak: shift average calories by ±10 % while keeping protein.
   const tweaked = adjust
-    ? coachedTargets(goal, analysis.current * (1 + adjust / 100), analysis.currentWeightKg, st.profile).targets
+    ? coachedTargets(goal, analysis.current * (1 + adjust / 100), analysis.currentWeightKg, st.profile, analysis.kcalPerKg).targets
     : snap.targets;
   const firstTrend = analysis.trend.find((t) => t.date >= week[0]);
   const lastTrend = analysis.trend.at(-1);

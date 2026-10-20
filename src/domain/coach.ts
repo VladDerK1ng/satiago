@@ -1,4 +1,4 @@
-import { expenditureSeries, initialExpenditure, LB_PER_KG, type ExpenditurePoint, type IntakeDay } from './expenditure';
+import { energyDensity, expenditureSeries, initialExpenditure, LB_PER_KG, type ExpenditurePoint, type IntakeDay } from './expenditure';
 import { coachedTargets, weekdayOf, WEEKDAYS } from './targets';
 import { dailyTrend, dayIndex, fromIndex, trendRate, type TrendPoint } from './trend';
 import type { BodyEntry, DayMeta, Goal, LogEntry, MacroTarget, Profile, TargetSnapshot, WeightUnit } from './types';
@@ -8,11 +8,16 @@ export const fromKg = (kg: number, u: WeightUnit) => (u === 'kg' ? kg : kg * LB_
 
 export function intakeDays(log: LogEntry[], meta: DayMeta[]): IntakeDay[] {
   const by = new Map<string, IntakeDay>();
+  // Carbs count only for days where every entry with calories has them; a gap would look like a carb drop.
+  const carbsMissing = new Set<string>();
   for (const e of log) {
-    const d = by.get(e.date) ?? { date: e.date, kcal: 0 };
+    const d = by.get(e.date) ?? { date: e.date, kcal: 0, carbs: 0 };
     d.kcal = (d.kcal ?? 0) + (e.n.kcal ?? 0);
+    if (e.n.carbs !== undefined) d.carbs = (d.carbs ?? 0) + e.n.carbs;
+    else if ((e.n.kcal ?? 0) > 0) carbsMissing.add(e.date);
     by.set(e.date, d);
   }
+  for (const date of carbsMissing) delete by.get(date)!.carbs;
   for (const m of meta) {
     const d = by.get(m.date) ?? { date: m.date };
     d.partial = m.partial;
@@ -44,9 +49,21 @@ export interface CoachAnalysis {
   expenditure: ExpenditurePoint[];
   initial: number;
   current: number;
+  /** Typical uncertainty of `current` (kcal, about one standard deviation). */
+  currentSd?: number;
   currentWeightKg: number;
+  /** Energy per kg of body-mass change at the current weight (see `energyDensity`). */
+  kcalPerKg: number;
   ratePerWeek?: number; // user unit
   held: boolean;
+}
+
+/** Body fat % to use: the profile's, else the latest logged one, else undefined (estimated later). */
+export function knownBodyFat(profile: Profile, body: BodyEntry[]): number | undefined {
+  if (profile.bodyFat !== undefined) return profile.bodyFat;
+  let latest: BodyEntry | undefined;
+  for (const b of body) if (b.bodyFat !== undefined && (!latest || b.date > latest.date)) latest = b;
+  return latest?.bodyFat;
 }
 
 export function analyze(i: CoachInput): CoachAnalysis {
@@ -61,7 +78,11 @@ export function analyze(i: CoachInput): CoachAnalysis {
   const currentWeightKg = trendKg.at(-1)?.trend ?? toKg(i.fallbackWeight, i.unit);
   const initial = initialExpenditure(i.profile, firstKg);
   const known = i.knownExpenditure?.length ? new Map(i.knownExpenditure.map((k) => [dayIndex(k.date), k.kcal])) : undefined;
-  const expenditure = expenditureSeries(intakeDays(i.log, i.meta), trendKg, initial, i.today, { known });
+  const bodyFat = knownBodyFat(i.profile, i.body);
+  const expenditure = expenditureSeries(intakeDays(i.log, i.meta), trendKg, initial, i.today, {
+    known,
+    energyDensity: (kg) => energyDensity(i.profile, kg, bodyFat),
+  });
   const last = expenditure.at(-1);
   return {
     trend,
@@ -69,7 +90,9 @@ export function analyze(i: CoachInput): CoachAnalysis {
     expenditure,
     initial,
     current: last?.expenditure ?? initial,
+    currentSd: last?.sd,
     currentWeightKg,
+    kcalPerKg: energyDensity(i.profile, currentWeightKg, bodyFat),
     ratePerWeek: trendRate(trend),
     held: last?.held ?? true,
   };
@@ -91,7 +114,7 @@ export function targetFor(date: string, goal: Goal | undefined, snapshots: Targe
 }
 
 export function buildSnapshot(goal: Goal, a: CoachAnalysis, profile: Profile, date: string, previous?: TargetSnapshot): TargetSnapshot {
-  const res = coachedTargets(goal, a.current, a.currentWeightKg, profile);
+  const res = coachedTargets(goal, a.current, a.currentWeightKg, profile, a.kcalPerKg);
   const delta = previous ? res.average - Math.round(previous.targets.reduce((t, x) => t + x.kcal, 0) / 7) : 0;
   const parts = [
     `Expenditure ${a.current} kcal${a.held ? ' (held: log weight and food to update)' : ''}.`,
