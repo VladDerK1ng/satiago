@@ -39,6 +39,22 @@ const KCAL_PER_KG_LEAN = 1816;
 const KCAL_PER_KG_FAT = 9440;
 /** Forbes' constant: kg of fat mass at which half of a weight change is lean tissue. */
 const FORBES_KG = 10.4;
+/**
+ * Lean share of a weight change relative to Forbes' rule when protein intake is high (≥ 1.6 g/kg).
+ * Forbes' data are from people who did not train; with resistance training and high protein, lean
+ * tissue is largely kept in a deficit (Longland 2016: +1.2 kg lean on 2.4 g/kg at −40 % energy;
+ * Krieger 2006 meta-regression), which Hall 2008 notes his model cannot capture. Halving it fitted the
+ * one long real log best (14- and 28-day weight forecasts) and keeps targets consistent elsewhere.
+ */
+export const LEAN_SPARING = 0.5;
+/**
+ * Share of a change in intake that expenditure follows within about a week: thermic effect of food
+ * (0.10) plus adaptive thermogenesis (0.14), as in Hall et al. 2011 (Lancet), with τ ≈ 7 days.
+ */
+export const ADAPT_SHARE = 0.24;
+const ADAPT_TAU = 7;
+/** Share of expenditure that scales with body mass (resting and weight-bearing energy), for drift as mass changes. */
+export const MASS_SHARE = 0.5;
 
 /** Body fat % from BMI, age and sex (Deurenberg 1991), used when none is known. */
 export function estimateBodyFat(p: Profile, weightKg: number, now = new Date()): number {
@@ -51,12 +67,13 @@ export function estimateBodyFat(p: Profile, weightKg: number, now = new Date()):
  * Energy stored per kg of body-mass change for this person (kcal/kg). By Forbes' rule the
  * lean share of a change is 10.4 / (10.4 + fat mass), so leaner people gain and lose more
  * lean tissue, which holds far less energy than fat: about 5 500 kcal/kg for a lean man,
- * 7 700 and up with more body fat. Uses the known body fat when given.
+ * 7 700 and up with more body fat. Uses the known body fat when given. `leanScale` scales the
+ * lean share (see `LEAN_SPARING`).
  */
-export function energyDensity(p: Profile, weightKg: number, bodyFat?: number, now = new Date()): number {
-  const bf = bodyFat !== undefined && bodyFat > 3 && bodyFat < 70 ? bodyFat : estimateBodyFat(p, weightKg, now);
+export function energyDensity(p: Profile, weightKg: number, bodyFat?: number, opts: { now?: Date; leanScale?: number } = {}): number {
+  const bf = bodyFat !== undefined && bodyFat > 3 && bodyFat < 70 ? bodyFat : estimateBodyFat(p, weightKg, opts.now);
   const fatKg = (weightKg * bf) / 100;
-  const lean = FORBES_KG / (FORBES_KG + fatKg);
+  const lean = (FORBES_KG / (FORBES_KG + fatKg)) * (opts.leanScale ?? 1);
   return lean * KCAL_PER_KG_LEAN + (1 - lean) * KCAL_PER_KG_FAT;
 }
 
@@ -68,6 +85,8 @@ export interface IntakeDay {
   /** Logged carbohydrate in grams, used to correct for glycogen-bound water. */
   carbs?: number;
   partial?: boolean;
+  /** Set when `partial` was inferred because the day looks incomplete, not marked by the user. */
+  autoPartial?: boolean;
   fasted?: boolean;
 }
 
@@ -112,6 +131,15 @@ export interface ExpenditureOptions {
   glycogenKg?: number;
   /** Share of the state-space estimate in the reported value; the rest is the regression. */
   stateWeight?: number;
+  /** Overrides for the state-space model's parameters (calibration only). */
+  state?: Partial<typeof STATE>;
+  /**
+   * Share of a change in intake that expenditure follows within about a week: thermic effect of food
+   * plus adaptive thermogenesis (Hall 2011). Used to bring the regression's window average up to date.
+   */
+  adaptShare?: number;
+  /** Share of expenditure that scales with body mass, used to bring the window average up to date. */
+  massShare?: number;
 }
 
 interface LineFit {
@@ -228,7 +256,7 @@ interface Estimate {
  * weigh-in for a week, or more than `maxMissing` of the last 7 days unlogged. A longer break
  * restarts the window, since what happened during it is unknown.
  */
-function regressionEstimate(days: Days, initial: number, density: (kg: number) => number, o: Required<Omit<ExpenditureOptions, 'known' | 'energyDensity' | 'stateWeight' | 'glycogenKg'>>): Estimate {
+function regressionEstimate(days: Days, initial: number, density: (kg: number) => number, o: Required<Omit<ExpenditureOptions, 'known' | 'energyDensity' | 'stateWeight' | 'glycogenKg' | 'state'>>): Estimate {
   const prior = o.priorSd ** 2;
   const drift = o.driftSd ** 2;
   const intakeVar = o.intakeSd ** 2;
@@ -260,6 +288,9 @@ function regressionEstimate(days: Days, initial: number, density: (kg: number) =
     let missing = 0;
     let kcal = 0;
     let weights = 0;
+    let age = 0;
+    let fastKcal = 0;
+    let fastWeights = 0;
     const pts: { x: number; y: number; w: number }[] = [];
     for (let i = lo; i <= d; i++) {
       // A morning weigh-in reflects intake up to yesterday, and today's log is rarely complete:
@@ -269,6 +300,10 @@ function regressionEstimate(days: Days, initial: number, density: (kg: number) =
         const q = Math.exp(-(d - 1 - i) / o.intakeTau);
         kcal += q * k;
         weights += q;
+        age += q * (d - i);
+        const f = Math.exp(-(d - 1 - i) / ADAPT_TAU);
+        fastKcal += f * k;
+        fastWeights += f;
         valid++;
       } else if (i < d && i >= d - 7) missing++;
       const y = days.weight[i];
@@ -283,7 +318,11 @@ function regressionEstimate(days: Days, initial: number, density: (kg: number) =
       continue;
     }
     const rho = density(fit.weight);
-    const raw = Math.min(initial * 2, Math.max(initial * 0.5, kcal / weights - fit.slope * rho));
+    // The window gives average expenditure about `age` days ago; bring it to today with what is known to
+    // move it since: the response to the recent change in intake, and the change in body mass.
+    const average = kcal / weights - fit.slope * rho;
+    const lag = o.adaptShare * (fastKcal / fastWeights - kcal / weights) + o.massShare * (average / fit.weight) * fit.slope * (age / weights);
+    const raw = Math.min(initial * 2, Math.max(initial * 0.5, average + lag));
     const noise = (rho * fit.se) ** 2 + intakeVar / valid;
     P += drift;
     const gain = P / (P + noise);
@@ -310,7 +349,8 @@ const STATE = {
   logFrac: 0.05, // relative error of a logged day, plus logAbs kcal
   logAbs: 60,
   imputeFrac: 0.2, // relative error of an unlogged day filled with the usual intake
-  thermicShare: 0.1, // thermic effect of food: expenditure follows the intake trend by ~10 %
+  thermicShare: ADAPT_SHARE, // expenditure follows the intake trend: thermic effect of food + adaptive thermogenesis
+  massShare: MASS_SHARE, // share of expenditure that scales with body mass as tissue is gained or lost
   intakeTau: 14,
   huberK: 2.5,
 };
@@ -330,8 +370,7 @@ const add = (A: Mat, B: Mat): Mat => A.map((r, i) => r.map((v, j) => v + B[i][j]
  * with the usual intake (with wide error); with too little logging the fill is uninformative, so weight
  * changes during a break do not move expenditure.
  */
-function stateEstimate(days: Days, initial: number, density: (kg: number) => number, maxMissing: number): { value: number[]; sd: number[] } {
-  const s = STATE;
+function stateEstimate(days: Days, initial: number, density: (kg: number) => number, maxMissing: number, s = STATE): { value: number[]; sd: number[] } {
   const value = new Array<number>(days.n).fill(initial);
   const sd = new Array<number>(days.n).fill(SD_CALIBRATION * s.priorSd);
   const first = days.weight.findIndex((w) => w !== undefined);
@@ -396,12 +435,14 @@ function stateEstimate(days: Days, initial: number, density: (kg: number) => num
       sI = recentMissing + 1 > maxMissing ? 5000 : s.imputeFrac * I;
     }
     const rho = density(x[0]);
+    // Expenditure per kg of body mass moves with tissue gained or lost today.
+    const perKg = (s.massShare * x[2]) / x[0];
     const F: Mat = [
       [1, 0, -1 / rho],
       [0, s.phi, 0],
-      [0, 0, 1],
+      [0, 0, 1 - perKg / rho],
     ];
-    x = [x[0] + (I - x[2]) / rho, s.phi * x[1], x[2] + dT];
+    x = [x[0] + (I - x[2]) / rho, s.phi * x[1], x[2] + dT + (perKg * (I - x[2])) / rho];
     const Q: Mat = [
       [(sI / rho) ** 2 + 0.02 ** 2, 0, 0],
       [0, s.waterSd ** 2 * (1 - s.phi ** 2), 0],
@@ -444,6 +485,8 @@ export function expenditureSeries(
     priorSd: opts.priorSd ?? 40,
     driftSd: opts.driftSd ?? 4.5,
     intakeSd: opts.intakeSd ?? 150,
+    adaptShare: opts.adaptShare ?? ADAPT_SHARE,
+    massShare: opts.massShare ?? MASS_SHARE,
   };
   if (!trendKg.length && !intake.length) return [];
   const dens = opts.energyDensity ?? KCAL_PER_KG;
@@ -451,7 +494,7 @@ export function expenditureSeries(
   const days = buildDays(intake, trendKg, until, opts.known, opts.glycogenKg ?? 1.85);
   if (!days) return [];
   const reg = regressionEstimate(days, initial, density, o);
-  const state = stateEstimate(days, initial, density, o.maxMissing);
+  const state = stateEstimate(days, initial, density, o.maxMissing, { ...STATE, ...opts.state });
   const share = opts.stateWeight ?? 0.5;
 
   const out: ExpenditurePoint[] = [];

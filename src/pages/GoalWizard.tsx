@@ -6,7 +6,7 @@ import { motionTokens } from '../ui/motion';
 import { haptic } from '../platform/haptics';
 import { NumField, Page, Seg } from '../components/ui';
 import { buildSnapshot, fromKg } from '../domain/coach';
-import { DIET_LABELS, PROTEIN_LABELS, RATE_PRESETS, WEEKDAYS, coachedTargets, goalDailyDelta, isMinor } from '../domain/targets';
+import { DIET_LABELS, PROTEIN_LABELS, RATE_PRESETS, WEEKDAYS, coachedTargets, goalDailyDelta, goalIntake, isMinor } from '../domain/targets';
 import { t } from '../i18n';
 import type { CalorieFloor, DietType, Goal, GoalType, MacroTarget, ProgramStyle, ProteinPref } from '../domain/types';
 import { isoDate, uid } from '../domain/util';
@@ -53,9 +53,10 @@ export default function GoalWizard() {
     checkInDay,
     manual,
   };
-  const preview = useMemo(() => coachedTargets(goal, a.current, a.currentWeightKg, st.profile, a.kcalPerKg), [JSON.stringify(goal), a.current, a.currentWeightKg, a.kcalPerKg, st.profile]); // eslint-disable-line react-hooks/exhaustive-deps
-  const dailyDelta = goalDailyDelta(goal, a.currentWeightKg, a.kcalPerKg);
-  const weeklyChange = (dailyDelta * 7) / a.kcalPerKg;
+  const preview = useMemo(() => coachedTargets(goal, a.current, a.currentWeightKg, st.profile, a.kcalPerKg, a.recentIntake), [JSON.stringify(goal), a.current, a.currentWeightKg, a.kcalPerKg, a.recentIntake, st.profile]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Shown as the gap between target intake and expenditure today (it allows for metabolic adaptation).
+  const dailyDelta = goalIntake(goal, a.current, a.currentWeightKg, a.kcalPerKg, a.recentIntake) - a.current;
+  const weeklyChange = (goalDailyDelta(goal, a.currentWeightKg, a.kcalPerKg) * 7) / a.kcalPerKg;
   const weeks = goalWeight && weeklyChange ? Math.abs((goalWeight - current) / fromKg(weeklyChange, unit)) : undefined;
   const e = (k: number) => (eu === 'kJ' ? Math.round(k * 4.184) : k);
 

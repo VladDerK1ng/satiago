@@ -1,4 +1,4 @@
-import { age, bmr, energyDensity } from './expenditure';
+import { ADAPT_SHARE, age, bmr, energyDensity } from './expenditure';
 import type { CalorieFloor, DietType, Goal, MacroTarget, Profile, ProteinPref } from './types';
 
 /** Protein in g per kg of reference body mass. */
@@ -61,6 +61,21 @@ export function goalDailyDelta(g: Pick<Goal, 'type' | 'ratePct'>, weightKg: numb
   return g.type === 'lose' ? -d : d;
 }
 
+/**
+ * Daily intake that reaches the goal rate once expenditure has responded to it. Expenditure follows a
+ * change in intake by `ADAPT_SHARE` (the thermic effect of food plus adaptive thermogenesis), so moving
+ * from the recent intake I0 to I changes the energy balance by only (1 - k)(I - I0):
+ *   I = I0 + (goal balance - current balance) / (1 - k),  current balance = I0 - expenditure.
+ * Without a recent intake it assumes you eat at maintenance now. Once you eat the target, I0 equals it and
+ * this is expenditure + goal balance, so the goal rate is reached without overshooting.
+ */
+export function goalIntake(g: Pick<Goal, 'type' | 'ratePct'>, expenditure: number, weightKg: number, kcalPerKg: number, recentIntake?: number): number {
+  const from = recentIntake ?? expenditure;
+  // A recent intake far from the target (a holiday, a new diet) moves it by at most a quarter of expenditure.
+  const gap = Math.max(-0.25 * expenditure, Math.min(0.25 * expenditure, expenditure + goalDailyDelta(g, weightKg, kcalPerKg) - from));
+  return from + gap / (1 - ADAPT_SHARE);
+}
+
 function split(kcal: number, protein: number, diet: DietType, weightKg: number): { carbs: number; fat: number } {
   const rest = Math.max(0, kcal - protein * 4);
   let fat: number;
@@ -99,10 +114,10 @@ export interface TargetResult {
  * Coached targets for each weekday (Monday first). `kcalPerKg` defaults to the energy density
  * from the profile; pass the analysis' value so logged body fat is used too.
  */
-export function coachedTargets(goal: Goal, expenditure: number, weightKg: number, p: Profile, kcalPerKg = energyDensity(p, weightKg, p.bodyFat)): TargetResult {
+export function coachedTargets(goal: Goal, expenditure: number, weightKg: number, p: Profile, kcalPerKg = energyDensity(p, weightKg, p.bodyFat), recentIntake?: number): TargetResult {
   const g = safeGoal(goal, p);
   const floor = calorieFloor(g.floor, p, weightKg);
-  let avg = expenditure + goalDailyDelta(g, weightKg, kcalPerKg);
+  let avg = goalIntake(g, expenditure, weightKg, kcalPerKg, recentIntake);
   let flooredBy: number | undefined;
   if (avg < floor) {
     flooredBy = floor - avg;

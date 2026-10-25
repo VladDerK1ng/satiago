@@ -352,6 +352,9 @@ export function useActiveGoal(): Goal | undefined {
 }
 
 /** Coach analysis for today; recomputed when inputs change. */
+// Every screen (and the automatic weekly update) asks for the same analysis; compute it once per change.
+let analysisCache: { key: unknown[]; value: CoachAnalysis } | undefined;
+
 export function useAnalysis(today = isoDate()): CoachAnalysis {
   const log = useStore((s) => s.log);
   const meta = useStore((s) => s.meta);
@@ -362,10 +365,14 @@ export function useAnalysis(today = isoDate()): CoachAnalysis {
   const revise = useStore((s) => s.settings.trendRevise);
   const known = useStore((s) => s.externalExpenditure);
   const goal = useActiveGoal();
-  return useMemo(
-    () => analyze({ log, meta, body, profile, unit, trendAlpha: alpha, trendRevise: revise, knownExpenditure: known, today, fallbackWeight: goal?.startWeight || (unit === 'kg' ? 75 : 165) }),
-    [log, meta, body, profile, unit, alpha, revise, known, today, goal?.startWeight],
-  );
+  const fallback = goal?.startWeight || (unit === 'kg' ? 75 : 165);
+  return useMemo(() => {
+    const key = [log, meta, body, profile, unit, alpha, revise, known, today, fallback];
+    if (analysisCache && key.every((k, i) => k === analysisCache!.key[i])) return analysisCache.value;
+    const value = analyze({ log, meta, body, profile, unit, trendAlpha: alpha, trendRevise: revise, knownExpenditure: known, today, fallbackWeight: fallback });
+    analysisCache = { key, value };
+    return value;
+  }, [log, meta, body, profile, unit, alpha, revise, known, today, fallback]);
 }
 
 /** Formats minutes after midnight with the user's 12/24-hour preference. */

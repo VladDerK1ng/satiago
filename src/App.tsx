@@ -2,11 +2,15 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { HashRouter, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { aiHostFor } from './domain/aiProviders';
+import { autoSnapshot } from './domain/coach';
+import { fmtEnergy } from './domain/nutrition';
+import { isoDate } from './domain/util';
+import { t } from './i18n';
 import { hideSplash, onBackButton, onDeepLink, syncStatusBar } from './platform/app';
 import { setHapticsEnabled } from './platform/haptics';
 import { setAiHost } from './platform/net';
 import { onReminderTap, scheduleReminders } from './platform/notifications';
-import { useActiveGoal, useStore } from './store';
+import { useActiveGoal, useAnalysis, useStore } from './store';
 import { closeTopOverlay } from './ui/backStack';
 import { motionTokens } from './ui/motion';
 import { SnackbarHost, toast } from './ui/snackbar';
@@ -47,6 +51,29 @@ function useTheme() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, [theme, accent]);
+}
+
+/**
+ * Coached targets update by themselves on the check-in day, like MacroFactor's, and are recalculated when
+ * the method improves. The check-in screen stays available for a weigh-in and a review, but is not needed.
+ */
+function useAutoCheckIn() {
+  const onboarded = useStore((s) => s.settings.onboarded);
+  const eu = useStore((s) => s.settings.energyUnit);
+  const snapshots = useStore((s) => s.snapshots);
+  const profile = useStore((s) => s.profile);
+  const addSnapshot = useStore((s) => s.addSnapshot);
+  const goal = useActiveGoal();
+  const today = isoDate();
+  const a = useAnalysis(today);
+  useEffect(() => {
+    if (!onboarded) return;
+    const s = autoSnapshot(goal, snapshots, a, profile, today);
+    if (!s) return;
+    addSnapshot(s);
+    const avg = s.targets.reduce((x, y) => x + y.kcal, 0) / s.targets.length;
+    toast(t('checkin.auto', { energy: `${fmtEnergy(avg, eu)} ${eu}` }));
+  }, [onboarded, goal, snapshots, a, profile, today, addSnapshot, eu]);
 }
 
 /** Keeps native side effects (haptics, reminders, back button, deep links) in sync with state. */
@@ -117,6 +144,7 @@ function ScrollToTop() {
 function Shell() {
   useTheme();
   useNativeBridges();
+  useAutoCheckIn();
   const onboarded = useStore((s) => s.settings.onboarded);
   const loc = useLocation();
   if (!onboarded && loc.pathname !== '/welcome') return <Navigate to="/welcome" replace />;

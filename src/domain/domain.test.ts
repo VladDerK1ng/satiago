@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { analyze, buildSnapshot, checkInDue, intakeDays, loggingStreak, nextCheckIn, targetFor } from './coach';
-import { bmr, energyDensity, expenditureSeries, initialExpenditure, KCAL_PER_KG } from './expenditure';
+import { analyze, autoSnapshot, buildSnapshot, checkInDue, intakeDays, loggingStreak, nextCheckIn, proteinAdequate, recentIntake, TARGET_ALGO, targetFor } from './coach';
+import { ADAPT_SHARE, bmr, energyDensity, expenditureSeries, initialExpenditure, KCAL_PER_KG, LEAN_SPARING, type ExpenditureOptions, type IntakeDay } from './expenditure';
 import { dayTotals, foodFromEntry, recipeToFood, scale, scoreFood } from './nutrition';
-import { coachedTargets, goalDailyDelta, isMinor, safeGoal } from './targets';
+import { coachedTargets, goalDailyDelta, goalIntake, isMinor, safeGoal } from './targets';
 import { dailyTrend, fromIndex, dayIndex } from './trend';
 import type { BodyEntry, Food, Goal, LogEntry, Profile } from './types';
 
@@ -215,8 +215,9 @@ describe('targets', () => {
     const rho = energyDensity(profile, 90);
     const deficit = (0.45 * rho) / 7;
     expect(goalDailyDelta(goal, 90, rho)).toBeCloseTo(-deficit);
+    // From maintenance the cut is larger by 1/(1 - k): expenditure follows intake down by k.
     const r = coachedTargets(goal, 2700, 90, profile);
-    expect(Math.abs(r.average - (2700 - deficit))).toBeLessThan(15);
+    expect(Math.abs(r.average - (2700 - deficit / (1 - ADAPT_SHARE)))).toBeLessThan(15);
     expect(r.targets).toHaveLength(7);
     expect(r.targets[0].protein).toBe(Math.round(1.6 * Math.min(90, 27 * 1.8 ** 2)));
   });
@@ -225,7 +226,7 @@ describe('targets', () => {
     const fatter = coachedTargets(goal, 2700, 90, { ...profile, bodyFat: 35 });
     expect(2700 - lean.average).toBeLessThan(2700 - fatter.average - 100);
     // The analysis' density wins over the profile default.
-    expect(Math.abs(coachedTargets(goal, 2700, 90, profile, KCAL_PER_KG).average - (2700 - 495))).toBeLessThan(15);
+    expect(Math.abs(coachedTargets(goal, 2700, 90, profile, KCAL_PER_KG).average - (2700 - 495 / (1 - ADAPT_SHARE)))).toBeLessThan(15);
   });
   it('respects the calorie floor', () => {
     const r = coachedTargets({ ...goal, ratePct: 1 }, 1800, 70, { ...profile, sex: 'female', heightCm: 160 });
@@ -379,5 +380,90 @@ describe('safety limits', () => {
     expect(safeGoal(aggressive, adult)).toMatchObject({ floor: 'low', ratePct: 1.25 });
     expect(isMinor(teen)).toBe(true);
     expect(isMinor(adult)).toBe(false);
+  });
+});
+
+const entry = (date: string, kcal: number, protein = 0): LogEntry => ({ id: `${date}-${kcal}`, date, minute: 600, name: 'x', icon: 'x', n: { kcal, protein } });
+
+describe('expenditure adapts with intake', () => {
+  it('follows a cut down instead of lagging weeks behind it', () => {
+    // Maintenance at 2600, then 2100 from day 60; true expenditure follows the drop by 24 % within about a week.
+    const body: BodyEntry[] = [];
+    const intake: IntakeDay[] = [];
+    const trueT: number[] = [];
+    let w = 85;
+    let ema = 2600;
+    for (let i = 0; i < 90; i++) {
+      const kcal = i < 60 ? 2600 : 2100;
+      ema += (kcal - ema) / 7;
+      trueT.push(2600 + 0.24 * (ema - 2600));
+      body.push({ date: day(i), weight: w + (i % 3 === 0 ? 0.4 : i % 3 === 1 ? -0.3 : 0) });
+      intake.push({ date: day(i), kcal });
+      w += (kcal - trueT[i]) / KCAL_PER_KG;
+    }
+    const trend = dailyTrend(body, 0.1);
+    const err = (o: ExpenditureOptions) => Math.abs(expenditureSeries(intake, trend, 2600, day(74), o).at(-1)!.expenditure - trueT[74]);
+    const before = err({ adaptShare: 0, massShare: 0, state: { thermicShare: 0.1, massShare: 0 } });
+    expect(err({})).toBeLessThan(before - 20);
+  });
+});
+
+describe('targets allow for metabolic adaptation', () => {
+  const rho = 7000;
+  const loss = goalDailyDelta(goal, 90, rho);
+  it('asks for a bigger cut from maintenance, since expenditure follows intake down', () => {
+    expect(goalIntake(goal, 2700, 90, rho)).toBeCloseTo(2700 + loss / (1 - ADAPT_SHARE));
+    expect(goalIntake(goal, 2700, 90, rho, 2700)).toBeCloseTo(2700 + loss / (1 - ADAPT_SHARE));
+  });
+  it('settles on expenditure plus the goal balance once you eat the target', () => {
+    expect(goalIntake(goal, 2500, 90, rho, 2500 + loss)).toBeCloseTo(2500 + loss);
+  });
+  it('limits the effect of an unusual fortnight', () => {
+    expect(goalIntake({ type: 'maintain', ratePct: 0 }, 2400, 80, rho, 4400)).toBeCloseTo(4400 - (0.25 * 2400) / (1 - ADAPT_SHARE));
+  });
+});
+
+describe('incomplete days', () => {
+  it('leaves out a day far below the usual intake unless marked complete', () => {
+    const log = [...Array.from({ length: 10 }, (_, i) => entry(day(i), 2200)), entry(day(10), 900), entry(day(11), 2100)];
+    const days = intakeDays(log, []);
+    expect(days[10]).toMatchObject({ partial: true, autoPartial: true });
+    expect(days[11].partial).toBeUndefined();
+    expect(intakeDays(log, [{ date: day(10), partial: false }])[10].partial).toBe(false);
+    // Too little history to know the usual intake.
+    expect(intakeDays(log.slice(5), []).find((d) => d.date === day(10))!.partial).toBeUndefined();
+  });
+  it('averages the complete days of the last two weeks', () => {
+    const days = Array.from({ length: 14 }, (_, i) => ({ date: day(i), kcal: i === 3 ? 500 : 2000, partial: i === 3 || undefined }));
+    expect(recentIntake(days, day(14))).toBe(2000);
+    expect(recentIntake(days.slice(0, 8), day(14))).toBeUndefined();
+  });
+});
+
+describe('lean tissue kept with high protein', () => {
+  it('detects at least 1.6 g/kg of protein over the last four weeks', () => {
+    const log = Array.from({ length: 20 }, (_, i) => entry(day(i), 2200, 130));
+    expect(proteinAdequate(log, 80, day(20))).toBe(true);
+    expect(proteinAdequate(log, 85, day(20))).toBe(false);
+    expect(proteinAdequate(log.slice(0, 10), 80, day(20))).toBe(false);
+  });
+  it('raises the energy density when lean tissue is spared', () => {
+    expect(energyDensity(profile, 75, 12, { leanScale: LEAN_SPARING })).toBeGreaterThan(energyDensity(profile, 75, 12) + 1000);
+  });
+});
+
+describe('automatic weekly update', () => {
+  const a = analyze({ log: [], meta: [], body: [{ date: day(0), weight: 90 }], profile, unit: 'kg', trendAlpha: 0.1, today: day(10), fallbackWeight: 90 });
+  it('updates when a check-in is due, and recalculates targets set by an older method', () => {
+    expect(autoSnapshot(goal, [], a, profile, day(10))?.algo).toBe(TARGET_ALGO);
+    const old = { date: day(8), goalId: 'g', expenditure: 2600, targets: [], reason: '' };
+    const s = autoSnapshot(goal, [old], a, profile, day(10));
+    expect(s?.date).toBe(day(10));
+    expect(s?.reason).toContain('Recalculated');
+    expect(s?.reason).toContain('vs last week');
+    const sameDay = autoSnapshot(goal, [{ ...old, date: day(10) }], a, profile, day(10));
+    expect(sameDay?.reason).toContain('vs your previous targets');
+    expect(autoSnapshot(goal, [{ ...old, algo: TARGET_ALGO }], a, profile, day(10))).toBeUndefined();
+    expect(autoSnapshot({ ...goal, style: 'manual' }, [], a, profile, day(10))).toBeUndefined();
   });
 });

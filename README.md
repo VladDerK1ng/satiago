@@ -65,7 +65,7 @@ reminders. [Full comparison](docs/INSTALL.md#what-is-different-between-the-versi
 
 **Adaptive coaching**
 - Expenditure estimated from your intake and weight trend, updated daily, held when data is missing
-- Weekly check-ins with explained target changes; coached or manual programs
+- Targets update by themselves each week on your check-in day, with the change explained; coached or manual programs
 - Lose, maintain or gain; diet styles; protein preference; calorie floor; higher-calorie days
 - Weight trend (robust or simple smoothing), 30-day projection, goal progress
 
@@ -117,16 +117,21 @@ expenditure ≈ average intake − weight slope (kg/day) × energy density (kcal
 
 Both use the same physiology. The energy density depends on body composition (Forbes' rule, Hall's
 tissue densities): a lean person gains and loses more lean tissue, which stores far less energy
-than fat, so it ranges from about 5,000 to over 8,000 kcal/kg. Weight swings from glycogen and its
-water after a change in carbs are corrected for when you log carbs. Each estimate shows ± its
-typical uncertainty, which shrinks as data builds up. Days you mark as partially logged do not
-count, days marked as fasting count as zero, and the estimate is held (not guessed) without a
-weigh-in in the last week or when more than 3 of the last 7 days are unlogged. The method, sources
-and benchmark are in [docs/EXPENDITURE.md](docs/EXPENDITURE.md). Each week your targets are
-recalculated from that expenditure and your goal rate, with protein set per kilogram of body weight
-and a calorie floor (never below 1,000 kcal for women or 1,200 kcal for men, and usually higher
-because it is tied to your resting energy). People under 18 always get the standard floor and at
-most 0.5% weight loss per week.
+than fat, so it ranges from about 5,000 to over 8,000 kcal/kg. When your logged protein is high
+(1.6 g/kg or more), more of that tissue is assumed to be fat, as studies of people who train show.
+Expenditure is expected to follow a change in intake by about a quarter (the thermic effect of food
+and adaptive thermogenesis, as measured in the CALERIE trials) and to fall as you get lighter, so
+the estimate does not lag weeks behind a new diet. Weight swings from glycogen and its water after
+a change in carbs are corrected for when you log carbs. Each estimate shows ± its typical
+uncertainty, which shrinks as data builds up. Days that look incomplete (under half your usual
+intake) and days you mark as partially logged do not count, days marked as fasting count as zero,
+and the estimate is held (not guessed) without a weigh-in in the last week or when more than 3 of
+the last 7 days are unlogged. The method, sources and benchmark are in
+[docs/EXPENDITURE.md](docs/EXPENDITURE.md). Each week, on your check-in day, your targets are
+recalculated automatically from that expenditure and your goal rate, allowing for the same
+adaptation, with protein set per kilogram of body weight and a calorie floor (never below 1,000
+kcal for women or 1,200 kcal for men, and usually higher because it is tied to your resting
+energy). People under 18 always get the standard floor and at most 0.5% weight loss per week.
 
 ## Privacy and network
 

@@ -117,6 +117,9 @@ export const en = {
   'checkin.title': 'Weekly check-in',
   'checkin.apply': 'Apply new targets',
   'checkin.applied': 'New targets applied',
+  'checkin.auto': 'Weekly update: your new target is {energy} a day',
+  'checkin.reviewNote': 'Days that look incomplete are left out of your expenditure automatically. Switch Partial off if one was complete, or on for a day you only partly logged.',
+  'checkin.autoPartial': 'Looks incomplete, so it is not counted',
 
   'about.title': 'About Satiago',
   'food.search.popular': 'Popular foods',

@@ -36,3 +36,7 @@ dev-dist/
 *.aab
 *.xapk
 .claude/
+
+# Local harnesses that read personal app data or the benchmark outside this repo
+src/domain/phone.local.test.ts
+src/domain/tune.local.test.ts

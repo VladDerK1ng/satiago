@@ -1,21 +1,21 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Empty, NumField, Page, Switch } from '../components/ui';
-import { analyze, buildSnapshot, snapshotFor } from '../domain/coach';
+import { buildSnapshot, intakeDays, snapshotFor } from '../domain/coach';
 import { dayTotals, fmtEnergy } from '../domain/nutrition';
-import { coachedTargets, WEEKDAYS } from '../domain/targets';
+import { WEEKDAYS } from '../domain/targets';
 import { dayIndex, fromIndex } from '../domain/trend';
-import type { MacroTarget } from '../domain/types';
 import { fmtNum, isoDate } from '../domain/util';
 import { t } from '../i18n';
 import { haptic } from '../platform/haptics';
-import { useActiveGoal, useStore } from '../store';
+import { useActiveGoal, useAnalysis, useStore } from '../store';
 import { Illustration } from '../ui/Illustration';
 import { toast } from '../ui/snackbar';
 
-const avgKcal = (t: MacroTarget[]) => Math.round(t.reduce((s, x) => s + x.kcal, 0) / t.length);
-
-/** Weekly check-in: weigh-in, logging review, then a program update. */
+/**
+ * Weekly check-in: weigh-in, logging review, then the program update. Targets also update by themselves
+ * on the check-in day (see useAutoCheckIn); this screen is for a fresh weigh-in and a look at the week.
+ */
 export default function CheckIn() {
   const st = useStore();
   const goal = useActiveGoal();
@@ -25,26 +25,13 @@ export default function CheckIn() {
   const eu = st.settings.energyUnit;
   const [step, setStep] = useState(0);
   const [weight, setWeight] = useState<number | undefined>(st.body.find((b) => b.date === today)?.weight);
-  const [adjust, setAdjust] = useState(0);
 
   const week = Array.from({ length: 7 }, (_, i) => fromIndex(dayIndex(today) - 7 + i));
   const previous = goal ? snapshotFor(today, st.snapshots.filter((s) => s.goalId === goal.id)) : undefined;
 
-  // Recompute with the latest weigh-in and day flags (the store updates as the user edits).
-  const analysis = useMemo(
-    () =>
-      analyze({
-        log: st.log,
-        meta: st.meta,
-        body: st.body,
-        profile: st.profile,
-        unit,
-        trendAlpha: st.settings.trendAlpha,
-        today,
-        fallbackWeight: goal?.startWeight ?? 75,
-      }),
-    [st.log, st.meta, st.body, st.profile, unit, st.settings.trendAlpha, today, goal?.startWeight],
-  );
+  // The same analysis as the dashboard; it updates with the weigh-in and day flags as the user edits them.
+  const analysis = useAnalysis(today);
+  const autoPartial = useMemo(() => new Set(intakeDays(st.log, st.meta).filter((d) => d.autoPartial).map((d) => d.date)), [st.log, st.meta]);
 
   if (!goal)
     return (
@@ -58,15 +45,11 @@ export default function CheckIn() {
     );
 
   const snap = buildSnapshot(goal, analysis, st.profile, today, previous);
-  // Collaborative tweak: shift average calories by ±10 % while keeping protein.
-  const tweaked = adjust
-    ? coachedTargets(goal, analysis.current * (1 + adjust / 100), analysis.currentWeightKg, st.profile, analysis.kcalPerKg).targets
-    : snap.targets;
   const firstTrend = analysis.trend.find((t) => t.date >= week[0]);
   const lastTrend = analysis.trend.at(-1);
 
   const finish = () => {
-    st.addSnapshot({ ...snap, targets: tweaked, reason: adjust ? `${snap.reason} Adjusted ${adjust > 0 ? '+' : ''}${adjust}% by you.` : snap.reason });
+    st.addSnapshot(snap);
     haptic('success');
     toast(t('checkin.applied'));
     nav('/strategy', { replace: true });
@@ -89,26 +72,23 @@ export default function CheckIn() {
     </>,
     <>
       <h2>Review your logging</h2>
-      <p className="muted small">
-        Mark days you didn't log completely so they don't distort your expenditure. Mark empty days where you intentionally fasted.
-      </p>
+      <p className="muted small">{t('checkin.reviewNote')}</p>
       <div className="card list tight">
         {week.map((d) => {
           const items = st.log.filter((x) => x.date === d);
           const kcal = dayTotals(items).kcal ?? 0;
           const m = st.meta.find((x) => x.date === d);
-          const tgt = previous?.targets[(new Date(d + 'T00:00').getDay() + 6) % 7]?.kcal;
-          const suspicious = !!tgt && items.length > 0 && kcal < tgt * 0.5 && !m?.partial;
+          const auto = autoPartial.has(d);
           return (
             <div key={d} style={{ padding: '8px 0' }}>
               <div className="row between">
                 <b className="small">{new Date(d + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</b>
                 <span className="small">{items.length ? `${fmtEnergy(kcal, eu)} ${eu}` : m?.fasted ? 'Fasted' : 'Not logged'}</span>
               </div>
-              {suspicious && <div className="tiny" style={{ color: 'var(--warn)' }}>Much lower than target. Partially logged?</div>}
+              {auto && <div className="tiny" style={{ color: 'var(--warn)' }}>{t('checkin.autoPartial')}</div>}
               <div className="row" style={{ gap: 14, marginTop: 4 }}>
                 <span className="row tiny">
-                  <Switch checked={!!m?.partial} label="Partial" onChange={(v) => st.setMeta(d, { partial: v, fasted: v ? false : m?.fasted })} /> Partial
+                  <Switch checked={m?.partial ?? auto} label="Partial" onChange={(v) => st.setMeta(d, { partial: v, fasted: v ? false : m?.fasted })} /> Partial
                 </span>
                 {!items.length && (
                   <span className="row tiny">
@@ -154,7 +134,7 @@ export default function CheckIn() {
           </tr>
         </thead>
         <tbody>
-          {tweaked.map((t, i) => (
+          {snap.targets.map((t, i) => (
             <tr key={i}>
               <td>{WEEKDAYS[i].slice(0, 3)}</td>
               <td className="muted">{previous ? fmtEnergy(previous.targets[i].kcal, eu) : '–'}</td>
@@ -168,8 +148,6 @@ export default function CheckIn() {
           ))}
         </tbody>
       </table>
-      <label className="lbl">Adjust energy ({adjust > 0 ? '+' : ''}{adjust}%) · average {fmtEnergy(avgKcal(tweaked), eu)} {eu}</label>
-      <input type="range" min={-10} max={10} step={1} value={adjust} onChange={(e) => setAdjust(Number(e.target.value))} style={{ width: '100%' }} aria-label="Adjust calories" />
     </>,
   ];
 

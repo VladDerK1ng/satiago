@@ -1,4 +1,4 @@
-import { energyDensity, expenditureSeries, initialExpenditure, LB_PER_KG, type ExpenditurePoint, type IntakeDay } from './expenditure';
+import { energyDensity, expenditureSeries, initialExpenditure, LB_PER_KG, LEAN_SPARING, type ExpenditurePoint, type IntakeDay } from './expenditure';
 import { coachedTargets, weekdayOf, WEEKDAYS } from './targets';
 import { dailyTrend, dayIndex, fromIndex, trendRate, type TrendPoint } from './trend';
 import type { BodyEntry, DayMeta, Goal, LogEntry, MacroTarget, Profile, TargetSnapshot, WeightUnit } from './types';
@@ -24,7 +24,45 @@ export function intakeDays(log: LogEntry[], meta: DayMeta[]): IntakeDay[] {
     d.fasted = m.fasted;
     by.set(m.date, d);
   }
-  return [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const days = [...by.values()].sort((a, b) => a.date.localeCompare(b.date));
+  // A day far below the usual intake was almost always logged only in part (a forgotten meal), and would
+  // read as a big deficit. It is left out unless the user marked it complete (`partial: false`).
+  const usual: number[] = [];
+  for (const d of days) {
+    if (d.partial === undefined && !d.fasted && d.kcal && usual.length >= 7) {
+      const sorted = [...usual].sort((a, b) => a - b);
+      if (d.kcal < INCOMPLETE_SHARE * sorted[Math.floor(sorted.length / 2)]) {
+        d.partial = true;
+        d.autoPartial = true;
+      }
+    }
+    if (!d.partial && d.kcal) {
+      usual.push(d.kcal);
+      if (usual.length > 14) usual.shift();
+    }
+  }
+  return days;
+}
+
+/** A logged day below this share of the usual intake (median of the previous 14 logged days) counts as incomplete. */
+const INCOMPLETE_SHARE = 0.5;
+
+/** Protein that keeps most lean tissue: at least 1.6 g/kg a day on average over 14+ logged days of the last 4 weeks. */
+export function proteinAdequate(log: LogEntry[], weightKg: number, today: string): boolean {
+  const from = fromIndex(dayIndex(today) - 28);
+  const by = new Map<string, number>();
+  for (const e of log) if (e.date >= from && e.date < today && (e.n.kcal ?? 0) > 0) by.set(e.date, (by.get(e.date) ?? 0) + (e.n.protein ?? 0));
+  if (by.size < 14) return false;
+  let sum = 0;
+  for (const p of by.values()) sum += p;
+  return sum / by.size >= 1.6 * weightKg;
+}
+
+/** Average intake of the complete days in the last 14 (at least 10): the level expenditure has adapted to. */
+export function recentIntake(intake: IntakeDay[], today: string): number | undefined {
+  const from = fromIndex(dayIndex(today) - 14);
+  const k = intake.filter((d) => d.date >= from && d.date < today && !d.partial && (d.kcal !== undefined || d.fasted)).map((d) => d.kcal ?? 0);
+  return k.length >= 10 ? k.reduce((a, b) => a + b, 0) / k.length : undefined;
 }
 
 export interface CoachInput {
@@ -54,6 +92,10 @@ export interface CoachAnalysis {
   currentWeightKg: number;
   /** Energy per kg of body-mass change at the current weight (see `energyDensity`). */
   kcalPerKg: number;
+  /** Logged protein is high enough that lean tissue is mostly kept (see `LEAN_SPARING`). */
+  leanSparing: boolean;
+  /** Average intake of the last two weeks (see `recentIntake`). */
+  recentIntake?: number;
   ratePerWeek?: number; // user unit
   held: boolean;
 }
@@ -79,10 +121,10 @@ export function analyze(i: CoachInput): CoachAnalysis {
   const initial = initialExpenditure(i.profile, firstKg);
   const known = i.knownExpenditure?.length ? new Map(i.knownExpenditure.map((k) => [dayIndex(k.date), k.kcal])) : undefined;
   const bodyFat = knownBodyFat(i.profile, i.body);
-  const expenditure = expenditureSeries(intakeDays(i.log, i.meta), trendKg, initial, i.today, {
-    known,
-    energyDensity: (kg) => energyDensity(i.profile, kg, bodyFat),
-  });
+  const leanSparing = proteinAdequate(i.log, currentWeightKg, i.today);
+  const density = (kg: number) => energyDensity(i.profile, kg, bodyFat, { leanScale: leanSparing ? LEAN_SPARING : 1 });
+  const intake = intakeDays(i.log, i.meta);
+  const expenditure = expenditureSeries(intake, trendKg, initial, i.today, { known, energyDensity: density });
   const last = expenditure.at(-1);
   return {
     trend,
@@ -92,7 +134,9 @@ export function analyze(i: CoachInput): CoachAnalysis {
     current: last?.expenditure ?? initial,
     currentSd: last?.sd,
     currentWeightKg,
-    kcalPerKg: energyDensity(i.profile, currentWeightKg, bodyFat),
+    kcalPerKg: density(currentWeightKg),
+    leanSparing,
+    recentIntake: recentIntake(intake, i.today),
     ratePerWeek: trendRate(trend),
     held: last?.held ?? true,
   };
@@ -113,8 +157,11 @@ export function targetFor(date: string, goal: Goal | undefined, snapshots: Targe
   return (snapshotFor(date, snapshots.filter((s) => s.goalId === goal.id)) ?? snapshotFor(date, snapshots))?.targets[wd];
 }
 
-export function buildSnapshot(goal: Goal, a: CoachAnalysis, profile: Profile, date: string, previous?: TargetSnapshot): TargetSnapshot {
-  const res = coachedTargets(goal, a.current, a.currentWeightKg, profile, a.kcalPerKg);
+/** Version of the target method; snapshots from an older one are recalculated automatically. */
+export const TARGET_ALGO = 2;
+
+export function buildSnapshot(goal: Goal, a: CoachAnalysis, profile: Profile, date: string, previous?: TargetSnapshot, note?: string): TargetSnapshot {
+  const res = coachedTargets(goal, a.current, a.currentWeightKg, profile, a.kcalPerKg, a.recentIntake);
   const delta = previous ? res.average - Math.round(previous.targets.reduce((t, x) => t + x.kcal, 0) / 7) : 0;
   const parts = [
     `Expenditure ${a.current} kcal${a.held ? ' (held: log weight and food to update)' : ''}.`,
@@ -122,9 +169,25 @@ export function buildSnapshot(goal: Goal, a: CoachAnalysis, profile: Profile, da
       ? 'Targets match expenditure to maintain weight.'
       : `Targets aim for ${goal.ratePct}% of body weight per week.`,
   ];
-  if (previous) parts.push(delta === 0 ? 'No change from last week.' : `${delta > 0 ? '+' : ''}${delta} kcal/day vs last week.`);
+  // A same-day recalculation compares with the targets it replaces, not with last week's.
+  const since = previous?.date === date ? 'your previous targets' : 'last week';
+  if (previous) parts.push(delta === 0 ? `No change from ${since}.` : `${delta > 0 ? '+' : ''}${delta} kcal/day vs ${since}.`);
   if (res.flooredBy) parts.push(`Raised ${Math.round(res.flooredBy)} kcal to respect your calorie floor.`);
-  return { date, goalId: goal.id, expenditure: a.current, targets: res.targets, reason: parts.join(' ') };
+  if (note) parts.push(note);
+  return { date, goalId: goal.id, expenditure: a.current, targets: res.targets, reason: parts.join(' '), algo: TARGET_ALGO };
+}
+
+/**
+ * The weekly update, made without asking: a new snapshot when a check-in is due, or this week's targets
+ * recalculated when an older version of the method set them. Undefined when nothing needs to change.
+ */
+export function autoSnapshot(goal: Goal | undefined, snapshots: TargetSnapshot[], a: CoachAnalysis, profile: Profile, today: string): TargetSnapshot | undefined {
+  if (!goal || goal.style === 'manual' || goal.endedAt) return undefined;
+  const last = snapshotFor(today, snapshots.filter((s) => s.goalId === goal.id));
+  if (checkInDue(goal, snapshots, today)) return buildSnapshot(goal, a, profile, today, last);
+  if (last && (last.algo ?? 1) < TARGET_ALGO && dayIndex(today) - dayIndex(last.date) < 7)
+    return buildSnapshot(goal, a, profile, today, last, 'Recalculated with the updated expenditure model.');
+  return undefined;
 }
 
 export function checkInDue(goal: Goal | undefined, snapshots: TargetSnapshot[], today: string): boolean {

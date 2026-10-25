@@ -202,6 +202,8 @@ export interface TargetSnapshot {
   expenditure: number;
   targets: MacroTarget[]; // 7 entries, Monday first
   reason: string;
+  /** Version of the target method that made it (see `TARGET_ALGO`); missing on older snapshots. */
+  algo?: number;
 }
 
 export interface Profile {
